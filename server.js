@@ -22,18 +22,18 @@ const upload = multer({
 const MOCK_EXTRACTED = {
   employerName: 'Acme Corp',
   employerEIN: 'XX-XXXXXXX',
-  income: 85000.00,
-  wagesSalary: 85000.00,
-  federalTaxWithheld: 12750.00,
-  stateTaxWithheld: 4250.00,
-  socialSecurityWages: 85000.00,
-  medicareWages: 85000.00,
+  income: 450000.00,
+  wagesSalary: 450000.00,
+  federalTaxWithheld: 85000.00,
+  stateTaxWithheld: 0,
+  socialSecurityWages: 450000.00,
+  medicareWages: 450000.00,
   taxYear: 2025,
 }
 
 let uploadedFileInfo = null
-
 const jobs = {}
+const filingHistory = []
 
 function addStage(job, name) {
   job.stages.push({ name, status: 'active' })
@@ -144,51 +144,72 @@ async function processExtraction(jobId) {
       try {
         const extracted = await structureWithLLM(rawText)
         result = mergeWithFallback(extracted)
-      } catch (err) {
-        console.error('LLM structuring error:', err)
-        result = { ...MOCK_EXTRACTED, _warning: 'AI structuring failed — default values shown. Please correct.' }
+      } catch {
+        result = { ...MOCK_EXTRACTED, _warning: 'AI structuring failed. Default values shown.' }
       }
       completeStage(job)
     } else if (!process.env.LLM_API_KEY) {
-      result = { ...MOCK_EXTRACTED, _warning: 'LLM API key not configured (set LLM_API_KEY). Default values shown — please correct.' }
+      result = { ...MOCK_EXTRACTED, _warning: 'AI engine not configured. Default values shown.' }
     } else if (rawText.length < 10) {
-      result = { ...MOCK_EXTRACTED, _warning: 'Could not extract meaningful text from the document. Please fill in fields manually.' }
+      result = { ...MOCK_EXTRACTED, _warning: 'Could not extract meaningful text. Please fill in fields manually.' }
     } else {
-      result = { ...MOCK_EXTRACTED, _warning: 'Extraction issue — default values shown. Please correct.' }
+      result = { ...MOCK_EXTRACTED, _warning: 'Default values shown.' }
     }
 
     job.status = 'complete'
     job.result = result
-  } catch (err) {
-    console.error('Extraction pipeline error:', err)
+  } catch {
     job.status = 'complete'
-    job.result = { ...MOCK_EXTRACTED, _warning: 'Extraction encountered an error. Default values shown — please correct.' }
+    job.result = { ...MOCK_EXTRACTED, _warning: 'Extraction encountered an error. Default values shown.' }
   }
 }
 
-function taxBrackets(income) {
+function calculateSA(income, payeWithheld) {
   const brackets = [
-    { limit: 11000, rate: 0.10, label: '10% on first $11,000' },
-    { limit: 33725, rate: 0.12, label: '12% on $11,001 \u2013 $44,725' },
-    { limit: 50650, rate: 0.22, label: '22% on $44,726 \u2013 $95,375' },
+    { from: 0, to: 237100, rate: 0.18 },
+    { from: 237101, to: 370500, rate: 0.26 },
+    { from: 370501, to: 512800, rate: 0.31 },
+    { from: 512801, to: 673000, rate: 0.36 },
+    { from: 673001, to: 857900, rate: 0.39 },
+    { from: 857901, to: 1817000, rate: 0.41 },
+    { from: 1817001, to: Infinity, rate: 0.45 },
   ]
-  let remaining = income
-  let totalTax = 0
+
+  let grossTax = 0
   const breakdown = []
+
   for (const b of brackets) {
-    const applicable = Math.min(remaining, b.limit)
-    if (applicable <= 0) break
-    const tax = +(applicable * b.rate).toFixed(2)
-    totalTax += tax
-    remaining -= applicable
-    breakdown.push({ label: b.label, amount: tax })
+    if (income <= b.from) break
+    const taxableInBracket = Math.min(income, b.to) - b.from
+    const taxAmount = +(taxableInBracket * b.rate).toFixed(2)
+    grossTax += taxAmount
+    breakdown.push({
+      label: `R ${b.from.toLocaleString('en-ZA')} – R ${b.to === Infinity ? '+' : b.to.toLocaleString('en-ZA')}`,
+      rate: `${(b.rate * 100).toFixed(0)}%`,
+      amount: taxAmount,
+      taxable: taxableInBracket,
+    })
   }
-  if (remaining > 0) {
-    const tax = +(remaining * 0.24).toFixed(2)
-    totalTax += tax
-    breakdown.push({ label: '24% on remaining balance', amount: tax })
+
+  grossTax = +grossTax.toFixed(2)
+  const primaryRebate = 17235
+  const taxAfterRebate = +Math.max(0, grossTax - primaryRebate).toFixed(2)
+  const refund = +(payeWithheld - taxAfterRebate).toFixed(2)
+
+  return {
+    income,
+    payeWithheld,
+    totalWithheld: payeWithheld,
+    totalTax: taxAfterRebate,
+    grossTax,
+    primaryRebate,
+    refund,
+    breakdown,
+    isRefund: refund >= 0,
+    isOwed: refund < 0,
+    currency: 'ZAR',
+    taxYear: '2025/2026',
   }
-  return { totalTax: +totalTax.toFixed(2), breakdown }
 }
 
 app.post('/api/upload', upload.single('file'), (req, res) => {
@@ -247,32 +268,38 @@ app.get('/api/extract/:jobId', (req, res) => {
 
 app.post('/api/calculate', (req, res) => {
   const data = req.body
-  const income = data.income || 85000
-  const federalWithheld = data.federalTaxWithheld || 0
-  const stateWithheld = data.stateTaxWithheld || 0
-  const totalWithheld = federalWithheld + stateWithheld
-  const { totalTax, breakdown } = taxBrackets(income)
-  const refund = +(totalWithheld - totalTax).toFixed(2)
-  res.json({
-    income,
-    federalWithheld,
-    stateWithheld,
-    totalWithheld,
-    totalTax,
-    refund,
-    breakdown,
-    isRefund: refund >= 0,
-    isOwed: refund < 0,
-  })
+  const income = data.income || 450000
+  const paye = data.federalTaxWithheld || 0
+  res.json(calculateSA(income, paye))
 })
 
-app.post('/api/file', (_req, res) => {
+app.post('/api/file', (req, res) => {
   const ref = 'TAX-' + Array.from({ length: 8 }, () =>
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]
   ).join('')
-  setTimeout(() => {
-    res.json({ success: true, referenceNumber: ref, filedAt: new Date().toISOString() })
-  }, 2000)
+  const calc = req.body.calculation || {}
+
+  const record = {
+    referenceNumber: ref,
+    filedAt: new Date().toISOString(),
+    employerName: req.body.employerName || '',
+    income: calc.income || 0,
+    totalTax: calc.totalTax || 0,
+    payeWithheld: calc.payeWithheld || 0,
+    refund: calc.refund || 0,
+    isRefund: calc.isRefund ?? true,
+    breakdown: calc.breakdown || [],
+    grossTax: calc.grossTax || 0,
+    primaryRebate: calc.primaryRebate || 0,
+  }
+
+  filingHistory.unshift(record)
+
+  res.json({ success: true, referenceNumber: ref, filedAt: record.filedAt })
+})
+
+app.get('/api/history', (_req, res) => {
+  res.json(filingHistory)
 })
 
 app.listen(PORT, () => {

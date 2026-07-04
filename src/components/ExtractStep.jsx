@@ -42,8 +42,8 @@ function StageIcon({ status }) {
   }
   if (status === 'active') {
     return (
-      <div className="w-6 h-6 rounded-full border-2 border-indigo-500 flex items-center justify-center flex-shrink-0">
-        <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+      <div className="w-6 h-6 rounded-full border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
       </div>
     )
   }
@@ -204,8 +204,8 @@ export default function ExtractStep({ onComplete }) {
           <div className="space-y-4">
             {stages.length === 0 && (
               <div className="flex items-center gap-3 py-2">
-                <div className="w-6 h-6 rounded-full border-2 border-indigo-500 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                <div className="w-6 h-6 rounded-full border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                 </div>
                 <span className="text-sm text-gray-500">Initializing extraction...</span>
               </div>
@@ -234,7 +234,7 @@ export default function ExtractStep({ onComplete }) {
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  active ? 'bg-indigo-500 animate-pulse' : 'bg-gray-200'
+                  active ? 'bg-blue-500 animate-pulse' : 'bg-gray-200'
                 }`}
               />
             ))}
@@ -282,7 +282,7 @@ export default function ExtractStep({ onComplete }) {
                 className={`w-full px-3 py-2 text-sm font-medium text-gray-900 border rounded-lg outline-none transition-colors tabular-nums ${
                   errors[key]
                     ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-300'
-                    : 'border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400'
+                    : 'border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-300 focus:border-blue-400'
                 }`}
               />
               {errors[key] && (
@@ -295,7 +295,7 @@ export default function ExtractStep({ onComplete }) {
 
       <button
         onClick={handleContinue}
-        className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-semibold text-base hover:bg-indigo-700 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md"
+        className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md"
       >
         Continue to Calculation
       </button>

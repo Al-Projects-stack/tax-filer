@@ -1,14 +1,17 @@
-const STEPS = [
-  { num: 1, label: 'Upload' },
-  { num: 2, label: 'Extract' },
-  { num: 3, label: 'Calculate' },
-  { num: 4, label: 'File' },
-]
+export default function StepIndicator({ currentStep, steps }) {
+  const STEPS = steps || [
+    { num: 1, label: 'Upload' },
+    { num: 2, label: 'Extract' },
+    { num: 3, label: 'Calculate' },
+    { num: 4, label: 'File' },
+  ]
 
-export default function StepIndicator({ currentStep }) {
+  const items = Array.isArray(STEPS) && typeof STEPS[0] === 'string'
+    ? STEPS.map((label, i) => ({ num: i + 1, label }))
+    : STEPS
   return (
     <div className="flex items-center justify-center">
-      {STEPS.map((s, i) => {
+      {items.map((s, i) => {
         const isCompleted = currentStep > s.num
         const isCurrent = currentStep === s.num
 
@@ -18,9 +21,9 @@ export default function StepIndicator({ currentStep }) {
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
                   isCompleted
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-blue-600 text-white'
                     : isCurrent
-                    ? 'bg-indigo-600 text-white ring-4 ring-indigo-100'
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-100'
                     : 'bg-gray-100 text-gray-400'
                 }`}
               >
@@ -34,16 +37,16 @@ export default function StepIndicator({ currentStep }) {
               </div>
               <span
                 className={`mt-2 text-xs font-medium transition-colors ${
-                  isCompleted || isCurrent ? 'text-indigo-600' : 'text-gray-400'
+                  isCompleted || isCurrent ? 'text-blue-600' : 'text-gray-400'
                 }`}
               >
                 {s.label}
               </span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < items.length - 1 && (
               <div
                 className={`w-12 sm:w-20 h-0.5 mx-3 mb-6 rounded transition-colors duration-300 ${
-                  currentStep > s.num ? 'bg-indigo-600' : 'bg-gray-200'
+                  currentStep > s.num ? 'bg-blue-600' : 'bg-gray-200'
                 }`}
               />
             )}

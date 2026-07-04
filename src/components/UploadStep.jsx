@@ -49,10 +49,14 @@ export default function UploadStep({ onComplete }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Upload your tax document</h2>
-        <p className="text-gray-500 mt-1">Drag and drop your file below to get started</p>
+    <div className="space-y-8">
+      <div className="text-center space-y-3 pt-4">
+        <h1 className="text-4xl sm:text-5xl font-heading font-bold text-gray-900 tracking-tight">
+          Return
+        </h1>
+        <p className="text-lg text-gray-500 max-w-sm mx-auto">
+          Upload your tax document and we will handle the rest.
+        </p>
       </div>
 
       <div
@@ -62,10 +66,10 @@ export default function UploadStep({ onComplete }) {
         onClick={() => inputRef.current?.click()}
         className={`relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200 ${
           dragOver
-            ? 'border-indigo-500 bg-indigo-50/50 scale-[1.01]'
+            ? 'border-blue-500 bg-blue-50/50 scale-[1.01]'
             : file
-            ? 'border-indigo-300 bg-indigo-50/30'
-            : 'border-gray-300 bg-white hover:border-indigo-400 hover:bg-gray-50/50'
+            ? 'border-blue-300 bg-blue-50/30'
+            : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-gray-50/50'
         }`}
       >
         <input
@@ -84,12 +88,12 @@ export default function UploadStep({ onComplete }) {
             </div>
             <p className="mt-4 text-lg font-medium text-gray-700">Drag &amp; drop your file here</p>
             <p className="text-sm text-gray-400 mt-1">or click to browse</p>
-            <p className="text-xs text-gray-300 mt-3">PDF &middot; JPG &middot; PNG &middot; Any file accepted</p>
+            <p className="text-xs text-gray-300 mt-3">PDF &middot; JPG &middot; PNG</p>
           </>
         ) : (
           <div className="flex items-center justify-center gap-4">
-            <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
@@ -121,7 +125,7 @@ export default function UploadStep({ onComplete }) {
         className={`w-full py-3.5 rounded-xl font-semibold text-base transition-all duration-200 ${
           !file || uploading
             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.98] shadow-sm hover:shadow-md'
+            : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-sm'
         }`}
       >
         {uploading ? (
@@ -133,7 +137,7 @@ export default function UploadStep({ onComplete }) {
             Uploading...
           </span>
         ) : (
-          'Upload &amp; Analyze'
+          'Upload'
         )}
       </button>
     </div>

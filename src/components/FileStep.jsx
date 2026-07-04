@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function FileStep({ calculation, onComplete, onReset }) {
+export default function FileStep({ calculation, extractedData, onComplete, onReset, onViewHistory }) {
   const [status, setStatus] = useState('confirm')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [filedAt, setFiledAt] = useState('')
@@ -13,7 +13,7 @@ export default function FileStep({ calculation, onComplete, onReset }) {
       const res = await fetch('/api/file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ calculation }),
+        body: JSON.stringify({ calculation, employerName: extractedData?.employerName || '' }),
       })
       const json = await res.json()
       setReferenceNumber(json.referenceNumber)
@@ -66,7 +66,7 @@ export default function FileStep({ calculation, onComplete, onReset }) {
 
         <button
           onClick={handleSubmit}
-          className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-semibold text-base hover:bg-indigo-700 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md"
+          className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-sm"
         >
           Submit Return
         </button>
@@ -79,18 +79,18 @@ export default function FileStep({ calculation, onComplete, onReset }) {
       <div className="text-center py-12">
         <div className="relative inline-flex">
           <div className="w-20 h-20 border-4 border-indigo-100 rounded-full" />
-          <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-t-indigo-600 rounded-full animate-spin" />
+          <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-t-blue-600 rounded-full animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <svg className="w-9 h-9 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-9 h-9 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
         </div>
         <h3 className="text-xl font-bold text-gray-900 mt-6">Submitting your return</h3>
-        <p className="text-gray-500 mt-2">Transmitting to IRS secure gateway...</p>
+        <p className="text-gray-500 mt-2">Transmitting to SARS eFiling...</p>
         <div className="mt-8 max-w-xs mx-auto">
           <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
-            <div className="bg-indigo-600 h-1.5 rounded-full animate-pulse" style={{ width: '65%' }} />
+            <div className="bg-blue-600 h-1.5 rounded-full animate-pulse" style={{ width: '65%' }} />
           </div>
           <p className="text-xs text-gray-400 mt-2">Establishing secure connection</p>
         </div>
@@ -110,7 +110,7 @@ export default function FileStep({ calculation, onComplete, onReset }) {
         <p className="text-gray-500 mt-1">Please try again.</p>
         <button
           onClick={() => setStatus('confirm')}
-          className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           Try Again
         </button>
@@ -135,7 +135,7 @@ export default function FileStep({ calculation, onComplete, onReset }) {
 
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Return Filed Successfully!</h2>
-        <p className="text-gray-500 mt-2">Your 2025 tax return has been accepted.</p>
+        <p className="text-gray-500 mt-2">Your return has been accepted by SARS.</p>
       </div>
 
       <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 inline-block mx-auto shadow-sm">
@@ -157,20 +157,28 @@ export default function FileStep({ calculation, onComplete, onReset }) {
         </p>
         <p className="text-xs text-gray-400 mt-2">
           {calculation.isRefund
-            ? 'Expected to arrive within 21 days via direct deposit'
+            ? 'SARS typically processes refunds within 21 days'
             : 'Payment instructions have been sent'}
         </p>
       </div>
 
-      <button
-        onClick={onReset}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        File Another Return
-      </button>
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <button
+          onClick={onViewHistory}
+          className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm"
+        >
+          View Filing History
+        </button>
+        <button
+          onClick={onReset}
+          className="w-full sm:w-auto inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          File Another Return
+        </button>
+      </div>
     </div>
   )
 }

@@ -5,6 +5,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['Space Grotesk', 'sans-serif'],
       },
     },
   },

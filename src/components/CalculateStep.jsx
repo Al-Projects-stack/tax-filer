@@ -31,12 +31,12 @@ export default function CalculateStep({ data, onComplete }) {
       <div className="space-y-6">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900">Calculating your return</h2>
-          <p className="text-gray-500 mt-1">Applying tax rates to your income data</p>
+          <p className="text-gray-500 mt-1">Applying SARS tax tables to your income</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-12 shadow-sm flex justify-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-            <p className="text-sm text-gray-400">Crunching numbers...</p>
+            <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            <p className="text-sm text-gray-400">Processing...</p>
           </div>
         </div>
       </div>
@@ -51,13 +51,13 @@ export default function CalculateStep({ data, onComplete }) {
     )
   }
 
-  const fmt = (n) => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (n) => 'R ' + Math.abs(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Your estimated return</h2>
-        <p className="text-gray-500 mt-1">Based on the 2025 tax brackets (single filer)</p>
+        <h2 className="text-2xl font-bold text-gray-900">Your tax calculation</h2>
+        <p className="text-gray-500 mt-1">SARS income tax tables &middot; {calc.taxYear}</p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -69,14 +69,6 @@ export default function CalculateStep({ data, onComplete }) {
             <span className="text-gray-500">Gross Income</span>
             <span className="font-semibold text-gray-900 tabular-nums">{fmt(calc.income)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Standard Deduction</span>
-            <span className="font-semibold text-gray-900 tabular-nums">Not applicable</span>
-          </div>
-          <div className="flex justify-between pt-1 border-t border-gray-100">
-            <span className="text-gray-700 font-medium">Taxable Income</span>
-            <span className="font-semibold text-gray-900 tabular-nums">{fmt(calc.income)}</span>
-          </div>
         </div>
 
         <div className="px-6 py-4 bg-gray-50 border-t border-b border-gray-200">
@@ -86,30 +78,40 @@ export default function CalculateStep({ data, onComplete }) {
           {calc.breakdown.map((b, i) => (
             <div key={i} className="flex justify-between text-sm">
               <span className="text-gray-500">{b.label}</span>
+              <span className="text-gray-500 tabular-nums">{b.rate}</span>
               <span className="font-medium text-gray-900 tabular-nums">{fmt(b.amount)}</span>
             </div>
           ))}
+          {calc.breakdown.length === 0 && (
+            <div className="text-sm text-gray-400">Income falls below tax threshold</div>
+          )}
           <div className="flex justify-between pt-3 border-t border-gray-200 font-medium">
-            <span className="text-gray-800">Total Federal Tax</span>
+            <span className="text-gray-800">Gross Tax Liability</span>
+            <span className="text-gray-900 tabular-nums">{fmt(calc.grossTax)}</span>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Rebates</h3>
+        </div>
+        <div className="px-6 py-4 space-y-3">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Primary Rebate (under 65)</span>
+            <span className="font-medium text-gray-900 tabular-nums">- {fmt(calc.primaryRebate)}</span>
+          </div>
+          <div className="flex justify-between pt-3 border-t border-gray-200 font-semibold">
+            <span className="text-gray-800">Tax After Rebate</span>
             <span className="text-gray-900 tabular-nums">{fmt(calc.totalTax)}</span>
           </div>
         </div>
 
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Withholding Summary</h3>
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">PAYE Summary</h3>
         </div>
         <div className="px-6 py-4 space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-500">Federal Withheld</span>
-            <span className="font-medium text-gray-900 tabular-nums">{fmt(calc.federalWithheld)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">State Withheld</span>
-            <span className="font-medium text-gray-900 tabular-nums">{fmt(calc.stateWithheld)}</span>
-          </div>
-          <div className="flex justify-between pt-3 border-t border-gray-200 font-medium">
-            <span className="text-gray-800">Total Withheld</span>
-            <span className="text-gray-900 tabular-nums">{fmt(calc.totalWithheld)}</span>
+            <span className="text-gray-500">PAYE Already Withheld</span>
+            <span className="font-medium text-gray-900 tabular-nums">{fmt(calc.payeWithheld)}</span>
           </div>
         </div>
 
@@ -117,10 +119,10 @@ export default function CalculateStep({ data, onComplete }) {
           <div className="flex justify-between items-center">
             <div>
               <span className={`text-lg font-bold ${calc.isRefund ? 'text-green-700' : 'text-red-700'}`}>
-                {calc.isRefund ? 'Estimated Refund' : 'Amount Owed'}
+                {calc.isRefund ? 'Estimated Refund' : 'Amount Owing'}
               </span>
               <p className="text-xs text-gray-500 mt-0.5">
-                {calc.isRefund ? 'Refund typically issued within 21 days' : 'Payment due upon filing'}
+                {calc.isRefund ? 'SARS typically processes refunds within 21 days' : 'Payment due upon filing'}
               </p>
             </div>
             <span className={`text-2xl font-extrabold tabular-nums ${calc.isRefund ? 'text-green-600' : 'text-red-600'}`}>
@@ -132,7 +134,7 @@ export default function CalculateStep({ data, onComplete }) {
 
       <button
         onClick={() => onComplete(calc)}
-        className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-semibold text-base hover:bg-indigo-700 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md"
+        className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-sm"
       >
         Continue to File
       </button>
