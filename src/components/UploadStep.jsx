@@ -1,5 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
 
+const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png']
+const MAX_SIZE = 10 * 1024 * 1024
+
 export default function UploadStep({ onComplete }) {
   const [dragOver, setDragOver] = useState(false)
   const [file, setFile] = useState(null)
@@ -7,10 +11,26 @@ export default function UploadStep({ onComplete }) {
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
 
-  const handleFile = useCallback((f) => {
+  const validateFile = useCallback((f) => {
+    const ext = '.' + f.name.split('.').pop().toLowerCase()
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      setError('This file type is not supported. Please upload a PDF, JPG, or PNG document.')
+      setFile(null)
+      return false
+    }
+    if (f.size > MAX_SIZE) {
+      setError('File is too large. Maximum size is 10 MB.')
+      setFile(null)
+      return false
+    }
     setError(null)
     setFile(f)
+    return true
   }, [])
+
+  const handleFile = useCallback((f) => {
+    validateFile(f)
+  }, [validateFile])
 
   const handleDrop = useCallback((e) => {
     e.preventDefault()

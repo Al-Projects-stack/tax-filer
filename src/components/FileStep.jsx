@@ -5,7 +5,42 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
   const [referenceNumber, setReferenceNumber] = useState('')
   const [filedAt, setFiledAt] = useState('')
 
-  const fmt = (n) => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (n) => 'R ' + Math.abs(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const handleDownloadReceipt = async () => {
+    try {
+      const res = await fetch('/api/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referenceNumber,
+          filedAt,
+          employerName: extractedData?.employerName || '',
+          taxYear: calculation.taxYear || '2025/2026',
+          income: calculation.income,
+          payeWithheld: calculation.payeWithheld,
+          grossTax: calculation.grossTax,
+          primaryRebate: calculation.primaryRebate,
+          totalTax: calculation.totalTax,
+          refund: calculation.refund,
+          isRefund: calculation.isRefund,
+          breakdown: calculation.breakdown,
+        }),
+      })
+      if (!res.ok) throw new Error('Download failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `return-${referenceNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // silently fail — receipt is optional
+    }
+  }
 
   const handleSubmit = async () => {
     setStatus('submitting')
@@ -161,6 +196,16 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
             : 'Payment instructions have been sent'}
         </p>
       </div>
+
+      <button
+        onClick={handleDownloadReceipt}
+        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-xl font-semibold text-base hover:bg-blue-50 transition-all duration-200 shadow-sm"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Download Receipt
+      </button>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         <button

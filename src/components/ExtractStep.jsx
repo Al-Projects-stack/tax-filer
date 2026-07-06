@@ -55,7 +55,7 @@ function StageIcon({ status }) {
 }
 
 export default function ExtractStep({ onComplete }) {
-  const [phase, setPhase] = useState('starting')
+  const [phase, setPhase] = useState('starting') // starting | processing | ready | failed
   const [stages, setStages] = useState([])
   const [warning, setWarning] = useState('')
   const [formData, setFormData] = useState({ ...INITIAL_FORM })
@@ -63,28 +63,37 @@ export default function ExtractStep({ onComplete }) {
   const pollRef = useRef(null)
   const jobIdRef = useRef(null)
 
-  useEffect(() => {
-    let cancelled = false
+  const resetAndRetry = () => {
+    setPhase('starting')
+    setStages([])
+    setWarning('')
+    setFormData({ ...INITIAL_FORM })
+    setErrors({})
+    jobIdRef.current = null
+  }
 
-    const start = async () => {
+  const startExtraction = useRef(() => {})
+
+  useEffect(() => {
+    startExtraction.current = async () => {
       try {
         const res = await fetch('/api/extract', { method: 'POST' })
         if (!res.ok) throw new Error('Failed to start extraction')
         const { jobId } = await res.json()
-        if (cancelled) return
         jobIdRef.current = jobId
         setPhase('processing')
       } catch {
-        if (!cancelled) {
-          setWarning('Could not start extraction. Default values provided.')
-          setPhase('ready')
-        }
+        setWarning('We could not start the extraction process. This is usually a temporary issue.')
+        setPhase('failed')
       }
     }
-
-    start()
-    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (phase === 'starting') {
+      startExtraction.current()
+    }
+  }, [phase])
 
   useEffect(() => {
     if (phase !== 'processing' || !jobIdRef.current) return
@@ -102,6 +111,15 @@ export default function ExtractStep({ onComplete }) {
 
         if (data.status === 'complete') {
           const r = data.result || {}
+          const allZeros = !r.income && !r.federalTaxWithheld
+          const hasWarning = r._warning && r._warning.length > 0
+
+          if (allZeros && hasWarning && r._warning.includes('Could not extract')) {
+            setWarning('The document could not be read. No text was found in the file.')
+            setPhase('failed')
+            return
+          }
+
           setFormData({
             employerName: r.employerName || '',
             employerEIN: r.employerEIN || '',
@@ -116,13 +134,13 @@ export default function ExtractStep({ onComplete }) {
           if (r._warning) setWarning(r._warning)
           setPhase('ready')
         } else if (data.status === 'error') {
-          setWarning(data.error || 'Extraction failed. Default values shown.')
-          setPhase('ready')
+          setWarning(data.error || 'Extraction failed.')
+          setPhase('failed')
         }
       } catch {
         if (!cancelled) {
-          setWarning('Connection issue. Default values shown.')
-          setPhase('ready')
+          setWarning('Connection lost. Please try again.')
+          setPhase('failed')
         }
       }
     }
@@ -239,6 +257,39 @@ export default function ExtractStep({ onComplete }) {
               />
             ))}
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'failed') {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mt-5">Could not read your document</h2>
+          <p className="text-gray-500 mt-1.5 max-w-sm mx-auto">
+            {warning || 'The file could not be processed. This can happen with scanned documents or damaged files.'}
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={resetAndRetry}
+            className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            Try Uploading Again
+          </button>
+          <button
+            onClick={() => setPhase('ready')}
+            className="flex-1 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors"
+          >
+            Enter Details Manually
+          </button>
         </div>
       </div>
     )

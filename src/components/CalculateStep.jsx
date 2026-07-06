@@ -3,9 +3,20 @@ import { useState, useEffect } from 'react'
 export default function CalculateStep({ data, onComplete }) {
   const [calc, setCalc] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [validationError, setValidationError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
+
+    const income = data.income
+    const paye = data.federalTaxWithheld
+
+    if (typeof income !== 'number' || income <= 0) {
+      setValidationError('Your gross income is missing or invalid. Go back to the previous step and enter your income before calculating.')
+      setLoading(false)
+      return
+    }
+
     const run = async () => {
       try {
         const res = await fetch('/api/calculate', {
@@ -19,7 +30,10 @@ export default function CalculateStep({ data, onComplete }) {
           setLoading(false)
         }
       } catch {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setValidationError('Calculation failed due to a connection issue. Please try again.')
+          setLoading(false)
+        }
       }
     }
     run()
@@ -38,6 +52,22 @@ export default function CalculateStep({ data, onComplete }) {
             <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
             <p className="text-sm text-gray-400">Processing...</p>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (validationError) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mt-5">Cannot calculate your return</h2>
+          <p className="text-gray-500 mt-1.5 max-w-sm mx-auto">{validationError}</p>
         </div>
       </div>
     )
