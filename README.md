@@ -1,6 +1,7 @@
-# Return — AI-Assisted Tax Filing
+# Return
+### AI-Assisted Tax Filing
 
-Upload a tax document, extract data, calculate your return, and file — all in one flow.
+Upload a tax document, extract data, calculate your return and file, all in one flow.
 
 ## How it works
 
