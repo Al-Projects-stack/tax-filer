@@ -64,36 +64,36 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Ready to file</h2>
-          <p className="text-gray-500 mt-1">Review your filing summary before submitting</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Ready to file</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Review your filing summary before submitting</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Tax Year</span>
-            <span className="font-medium text-gray-900">2025</span>
+            <span className="text-gray-500 dark:text-gray-400">Tax Year</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">2025</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Filing Status</span>
-            <span className="font-medium text-gray-900">Single</span>
+            <span className="text-gray-500 dark:text-gray-400">Filing Status</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">Single</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Total Income</span>
-            <span className="font-medium text-gray-900 tabular-nums">{fmt(calculation.income)}</span>
+            <span className="text-gray-500 dark:text-gray-400">Total Income</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calculation.income)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Total Tax</span>
-            <span className="font-medium text-gray-900 tabular-nums">{fmt(calculation.totalTax)}</span>
+            <span className="text-gray-500 dark:text-gray-400">Total Tax</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calculation.totalTax)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Total Withheld</span>
-            <span className="font-medium text-gray-900 tabular-nums">{fmt(calculation.totalWithheld)}</span>
+            <span className="text-gray-500 dark:text-gray-400">Total Withheld</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calculation.totalWithheld)}</span>
           </div>
-          <div className={`flex justify-between text-sm pt-3 border-t ${calculation.isRefund ? 'border-green-200' : 'border-red-200'}`}>
-            <span className={`font-semibold ${calculation.isRefund ? 'text-green-700' : 'text-red-700'}`}>
+          <div className={`flex justify-between text-sm pt-3 border-t ${calculation.isRefund ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
+            <span className={`font-semibold ${calculation.isRefund ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
               {calculation.isRefund ? 'Estimated Refund' : 'Amount Owed'}
             </span>
-            <span className={`font-bold tabular-nums ${calculation.isRefund ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`font-bold tabular-nums ${calculation.isRefund ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {calculation.isRefund ? '' : '-'}{fmt(calculation.refund)}
             </span>
           </div>
@@ -112,8 +112,8 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
   if (status === 'submitting') {
     return (
       <div className="text-center py-12">
-        <div className="relative inline-flex">
-          <div className="w-20 h-20 border-4 border-indigo-100 rounded-full" />
+          <div className="relative inline-flex">
+          <div className="w-20 h-20 border-4 border-blue-100 dark:border-blue-900 rounded-full" />
           <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-t-blue-600 rounded-full animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
             <svg className="w-9 h-9 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -121,13 +121,13 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
             </svg>
           </div>
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mt-6">Submitting your return</h3>
-        <p className="text-gray-500 mt-2">Transmitting to SARS eFiling...</p>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-6">Submitting your return</h3>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">Transmitting to SARS eFiling...</p>
         <div className="mt-8 max-w-xs mx-auto">
-          <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
+          <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
             <div className="bg-blue-600 h-1.5 rounded-full animate-pulse" style={{ width: '65%' }} />
           </div>
-          <p className="text-xs text-gray-400 mt-2">Establishing secure connection</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">Establishing secure connection</p>
         </div>
       </div>
     )
@@ -136,13 +136,13 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
   if (status === 'error') {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto">
+          <svg className="w-8 h-8 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mt-4">Submission failed</h3>
-        <p className="text-gray-500 mt-1">Please try again.</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-4">Submission failed</h3>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Please try again.</p>
         <button
           onClick={() => setStatus('confirm')}
           className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -156,8 +156,8 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
   return (
     <div className="space-y-8 text-center py-6">
       <div className="relative">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-          <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+          <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -169,13 +169,13 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Return Filed Successfully!</h2>
-        <p className="text-gray-500 mt-2">Your return has been accepted by SARS.</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Return Filed Successfully!</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">Your return has been accepted by SARS.</p>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 inline-block mx-auto shadow-sm">
-        <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Reference Number</p>
-        <p className="text-2xl font-mono font-bold text-gray-900 mt-1 tracking-wide">
+        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 inline-block mx-auto shadow-sm">
+        <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">Reference Number</p>
+        <p className="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100 mt-1 tracking-wide">
           {referenceNumber}
         </p>
         <p className="text-xs text-gray-400 mt-2">
@@ -183,11 +183,11 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         </p>
       </div>
 
-      <div className={`bg-white border rounded-2xl p-6 shadow-sm max-w-sm mx-auto ${calculation.isRefund ? 'border-green-200' : 'border-red-200'}`}>
-        <p className={`text-sm font-medium ${calculation.isRefund ? 'text-green-700' : 'text-red-700'}`}>
+      <div className={`bg-white dark:bg-gray-900 border rounded-2xl p-6 shadow-sm max-w-sm mx-auto ${calculation.isRefund ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
+        <p className={`text-sm font-medium ${calculation.isRefund ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
           {calculation.isRefund ? 'Your refund' : 'Amount to pay'}
         </p>
-        <p className={`text-3xl font-extrabold tabular-nums mt-1 ${calculation.isRefund ? 'text-green-600' : 'text-red-600'}`}>
+        <p className={`text-3xl font-extrabold tabular-nums mt-1 ${calculation.isRefund ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
           {calculation.isRefund ? '' : '-'}{fmt(calculation.refund)}
         </p>
         <p className="text-xs text-gray-400 mt-2">
@@ -199,7 +199,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
 
       <button
         onClick={handleDownloadReceipt}
-        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-xl font-semibold text-base hover:bg-blue-50 transition-all duration-200 shadow-sm"
+        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 rounded-xl font-semibold text-base hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 shadow-sm"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -216,7 +216,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         </button>
         <button
           onClick={onReset}
-          className="w-full sm:w-auto inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
+          className="w-full sm:w-auto inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

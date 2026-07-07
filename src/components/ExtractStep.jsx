@@ -214,11 +214,11 @@ export default function ExtractStep({ onComplete }) {
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Extracting your data</h2>
-          <p className="text-gray-500 mt-1">Reading your document to extract tax information</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Extracting your data</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Reading your document to extract tax information</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
           <div className="space-y-4">
             {stages.length === 0 && (
               <div className="flex items-center gap-3 py-2">
@@ -235,10 +235,10 @@ export default function ExtractStep({ onComplete }) {
                 <span
                   className={`text-sm ${
                     s.status === 'done'
-                      ? 'text-gray-500 line-through'
+                      ? 'text-gray-500 dark:text-gray-400 line-through'
                       : s.status === 'active'
-                      ? 'text-gray-900 font-medium'
-                      : 'text-gray-300'
+                      ? 'text-gray-900 dark:text-gray-100 font-medium'
+                      : 'text-gray-300 dark:text-gray-600'
                   }`}
                 >
                   {s.name}
@@ -266,13 +266,13 @@ export default function ExtractStep({ onComplete }) {
     return (
       <div className="space-y-6">
         <div className="text-center py-6">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mt-5">Could not read your document</h2>
-          <p className="text-gray-500 mt-1.5 max-w-sm mx-auto">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-5">Could not read your document</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1.5 max-w-sm mx-auto">
             {warning || 'The file could not be processed. This can happen with scanned documents or damaged files.'}
           </p>
         </div>
@@ -286,7 +286,7 @@ export default function ExtractStep({ onComplete }) {
           </button>
           <button
             onClick={() => setPhase('ready')}
-            className="flex-1 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors"
+            className="flex-1 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Enter Details Manually
           </button>
@@ -300,44 +300,44 @@ export default function ExtractStep({ onComplete }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-1.5 text-sm text-green-700 mb-4">
+        <div className="inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-full px-4 py-1.5 text-sm text-green-700 dark:text-green-400 mb-4">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
           Document processed
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">Review extracted information</h2>
-        <p className="text-gray-500 mt-1">Edit any field if the data needs correction</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Review extracted information</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Edit any field if the data needs correction</p>
       </div>
 
       {warning && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3.5 flex items-start gap-3">
-          <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-3.5 flex items-start gap-3">
+          <svg className="w-5 h-5 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-sm text-amber-800">{warning}</p>
+          <p className="text-sm text-amber-800 dark:text-amber-300">{warning}</p>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {fields.map((key) => (
             <div key={key} className="px-6 py-3.5">
-              <label className="block text-sm text-gray-500 mb-1">{FIELD_LABELS[key]}</label>
+              <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">{FIELD_LABELS[key]}</label>
               <input
                 type="text"
                 value={formData[key] ?? ''}
                 onChange={handleChange(key)}
                 onBlur={handleBlur(key)}
                 inputMode={NUMERIC_FIELDS.has(key) ? 'decimal' : 'text'}
-                className={`w-full px-3 py-2 text-sm font-medium text-gray-900 border rounded-lg outline-none transition-colors tabular-nums ${
+                className={`w-full px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 border rounded-lg outline-none transition-colors tabular-nums ${
                   errors[key]
-                    ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-300'
-                    : 'border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-300 focus:border-blue-400'
+                    ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 focus:ring-2 focus:ring-red-300 dark:focus:ring-red-700'
+                    : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700 focus:border-blue-400'
                 }`}
               />
               {errors[key] && (
-                <p className="text-xs text-red-500 mt-1">{errors[key]}</p>
+                <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors[key]}</p>
               )}
             </div>
           ))}

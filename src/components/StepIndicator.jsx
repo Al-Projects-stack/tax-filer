@@ -23,8 +23,8 @@ export default function StepIndicator({ currentStep, steps }) {
                   isCompleted
                     ? 'bg-blue-600 text-white'
                     : isCurrent
-                    ? 'bg-blue-600 text-white ring-4 ring-blue-100'
-                    : 'bg-gray-100 text-gray-400'
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
                 }`}
               >
                 {isCompleted ? (
@@ -37,7 +37,7 @@ export default function StepIndicator({ currentStep, steps }) {
               </div>
               <span
                 className={`mt-2 text-xs font-medium transition-colors ${
-                  isCompleted || isCurrent ? 'text-blue-600' : 'text-gray-400'
+                  isCompleted || isCurrent ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
                 }`}
               >
                 {s.label}
@@ -46,7 +46,7 @@ export default function StepIndicator({ currentStep, steps }) {
             {i < items.length - 1 && (
               <div
                 className={`w-12 sm:w-20 h-0.5 mx-3 mb-6 rounded transition-colors duration-300 ${
-                  currentStep > s.num ? 'bg-blue-600' : 'bg-gray-200'
+                  currentStep > s.num ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
                 }`}
               />
             )}

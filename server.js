@@ -2,9 +2,33 @@ import express from 'express'
 import cors from 'cors'
 import multer from 'multer'
 import { createRequire } from 'module'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import Tesseract from 'tesseract.js'
 import OpenAI from 'openai'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const DATA_DIR = join(__dirname, 'data')
+const HISTORY_FILE = join(DATA_DIR, 'history.json')
+
+function loadHistory() {
+  try {
+    if (existsSync(HISTORY_FILE)) {
+      return JSON.parse(readFileSync(HISTORY_FILE, 'utf-8'))
+    }
+  } catch {}
+  return []
+}
+
+function saveHistory(history) {
+  try {
+    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
+    writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2), 'utf-8')
+  } catch {}
+}
 
 const require = createRequire(import.meta.url)
 const pdfParse = require('pdf-parse')
@@ -44,7 +68,7 @@ const MOCK_EXTRACTED = {
 
 let uploadedFileInfo = null
 const jobs = {}
-const filingHistory = []
+const filingHistory = loadHistory()
 
 function addStage(job, name) {
   job.stages.push({ name, status: 'active' })
@@ -314,12 +338,24 @@ app.post('/api/file', (req, res) => {
   }
 
   filingHistory.unshift(record)
+  saveHistory(filingHistory)
 
   res.json({ success: true, referenceNumber: ref, filedAt: record.filedAt })
 })
 
 app.get('/api/history', (_req, res) => {
   res.json(filingHistory)
+})
+
+app.delete('/api/history/:referenceNumber', (req, res) => {
+  const { referenceNumber } = req.params
+  const index = filingHistory.findIndex(r => r.referenceNumber === referenceNumber)
+  if (index === -1) {
+    return res.status(404).json({ error: 'Filing not found' })
+  }
+  filingHistory.splice(index, 1)
+  saveHistory(filingHistory)
+  res.json({ success: true })
 })
 
 app.post('/api/receipt', async (req, res) => {
