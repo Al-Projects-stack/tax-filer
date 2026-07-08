@@ -79,6 +79,56 @@ function completeStage(job) {
   if (s) s.status = 'done'
 }
 
+function parseWithRegex(rawText) {
+  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean)
+  const full = rawText
+
+  const numbers = [...full.matchAll(/[Rr$]\s*([\d,]+\.?\d*)|(\d{3,}[,\d]*\.?\d*)/g)]
+    .map(m => parseFloat((m[1] || m[2]).replace(/,/g, '')))
+    .filter(n => !isNaN(n) && n > 0)
+
+  const incomeCandidates = numbers.filter(n => n >= 10000 && n <= 9999999)
+  const income = incomeCandidates.length > 0 ? Math.max(...incomeCandidates) : 0
+
+  const taxCandidates = numbers.filter(n => n >= 1000 && n <= income && n < income * 0.6)
+  const tax = taxCandidates.length > 0 ? Math.max(...taxCandidates) : 0
+
+  let employerName = ''
+  for (const line of lines) {
+    if (/employer|company|pty\s*ltd|\(pty\)|inc\.?|corp\.?|llc/i.test(line) && line.length < 100) {
+      employerName = line.replace(/employer\s*:?\s*/i, '').trim()
+      break
+    }
+  }
+  if (!employerName) {
+    for (const line of lines) {
+      if (/^[A-Z][a-z]+.*(?:ltd|inc|corp|pty|cc)$/i.test(line) && line.length < 80) {
+        employerName = line.trim()
+        break
+      }
+    }
+  }
+  if (!employerName && lines.length > 0) {
+    const nonEmpty = lines.filter(l => l.length > 3 && !/^\d/.test(l))
+    employerName = nonEmpty[0] || ''
+  }
+
+  const yearMatch = full.match(/\b(20\d{2})\b/)
+  const taxYear = yearMatch ? parseInt(yearMatch[1]) : 2025
+
+  return {
+    employerName,
+    employerEIN: '',
+    taxYear,
+    income,
+    wagesSalary: income,
+    federalTaxWithheld: tax,
+    stateTaxWithheld: 0,
+    socialSecurityWages: income,
+    medicareWages: income,
+  }
+}
+
 function mergeWithFallback(extracted) {
   return {
     employerName: typeof extracted.employerName === 'string' ? extracted.employerName : MOCK_EXTRACTED.employerName,
@@ -188,7 +238,17 @@ async function processExtraction(jobId) {
       }
       completeStage(job)
     } else if (!process.env.LLM_API_KEY) {
-      result = { ...MOCK_EXTRACTED, _warning: 'AI engine not configured. Default values shown.' }
+      if (rawText.length >= 10) {
+        addStage(job, 'Parsing extracted text')
+        const parsed = parseWithRegex(rawText)
+        completeStage(job)
+        result = mergeWithFallback(parsed)
+        if (!result.income) {
+          result._warning = 'Could not find income figures in the document. Please fill in fields manually.'
+        }
+      } else {
+        result = { ...MOCK_EXTRACTED, _warning: 'Could not read any text from the document. Please fill in fields manually.' }
+      }
     } else if (rawText.length < 10) {
       result = { ...MOCK_EXTRACTED, _warning: 'Could not extract meaningful text. Please fill in fields manually.' }
     } else {
