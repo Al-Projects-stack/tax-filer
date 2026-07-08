@@ -31,7 +31,7 @@ function saveHistory(history) {
 }
 
 const require = createRequire(import.meta.url)
-const pdfParse = require('pdf-parse')
+const { PDFParse } = require('pdf-parse')
 
 const app = express()
 const PORT = 3001
@@ -194,71 +194,88 @@ async function processExtraction(jobId) {
     return
   }
 
+  let rawText = ''
+
   try {
-    let rawText = ''
     const isPdf = fileInfo.mimetype === 'application/pdf'
     const isImage = fileInfo.mimetype.startsWith('image/')
 
     if (isPdf) {
       addStage(job, 'Reading PDF document')
-      const pdfData = await pdfParse(fileInfo.buffer)
-      rawText = (pdfData.text || '').trim()
+      try {
+        const parser = new PDFParse({ data: fileInfo.buffer })
+        rawText = (await parser.getText({ pageJoiner: '\n' })).trim()
+      } catch (pdfErr) {
+        console.error('pdfParse failed:', pdfErr)
+      }
       completeStage(job)
 
       if (rawText.length < 50) {
         addStage(job, 'Running OCR on scanned document')
-        const worker = await TesseractWorker.createWorker('eng')
-        const { data } = await worker.recognize(fileInfo.buffer)
-        await worker.terminate()
-        rawText = (data.text || '').trim()
+        try {
+          const worker = await TesseractWorker.createWorker('eng')
+          const { data } = await worker.recognize(fileInfo.buffer)
+          await worker.terminate()
+          rawText = (data.text || '').trim()
+        } catch (ocrErr) {
+          console.error('OCR failed for PDF:', ocrErr)
+        }
         completeStage(job)
       }
     } else if (isImage) {
       addStage(job, 'Running OCR on image')
-      const worker = await TesseractWorker.createWorker('eng')
-      const { data } = await worker.recognize(fileInfo.buffer)
-      await worker.terminate()
-      rawText = (data.text || '').trim()
+      try {
+        const worker = await TesseractWorker.createWorker('eng')
+        const { data } = await worker.recognize(fileInfo.buffer)
+        await worker.terminate()
+        rawText = (data.text || '').trim()
+      } catch (ocrErr) {
+        console.error('OCR failed for image:', ocrErr)
+      }
       completeStage(job)
     } else {
       addStage(job, 'Reading file')
       completeStage(job)
     }
+  } catch (stageErr) {
+    console.error('Stage execution error:', stageErr)
+  }
 
+  try {
     let result
-    const llmAvailable = process.env.LLM_API_KEY && rawText.length >= 10
+    const parsed = parseWithRegex(rawText)
 
-    if (llmAvailable) {
-      addStage(job, 'Structuring data with AI')
-      try {
-        const extracted = await structureWithLLM(rawText)
-        result = mergeWithFallback(extracted)
-      } catch {
-        result = { ...MOCK_EXTRACTED, _warning: 'AI structuring failed. Default values shown.' }
-      }
-      completeStage(job)
-    } else if (!process.env.LLM_API_KEY) {
-      if (rawText.length >= 10) {
-        addStage(job, 'Parsing extracted text')
-        const parsed = parseWithRegex(rawText)
-        completeStage(job)
-        result = mergeWithFallback(parsed)
-        if (!result.income) {
-          result._warning = 'Could not find income figures in the document. Please fill in fields manually.'
+    if (rawText.length >= 10) {
+      const llmAvailable = process.env.LLM_API_KEY
+
+      if (llmAvailable) {
+        addStage(job, 'Structuring data with AI')
+        try {
+          const extracted = await structureWithLLM(rawText)
+          result = mergeWithFallback(extracted)
+        } catch (llmErr) {
+          console.error('LLM structuring failed:', llmErr)
+          addStage(job, 'Falling back to text parsing')
+          result = mergeWithFallback(parsed)
         }
+        completeStage(job)
       } else {
-        result = { ...MOCK_EXTRACTED, _warning: 'Could not read any text from the document. Please fill in fields manually.' }
+        addStage(job, 'Parsing extracted text')
+        result = mergeWithFallback(parsed)
+        completeStage(job)
       }
-    } else if (rawText.length < 10) {
-      result = { ...MOCK_EXTRACTED, _warning: 'Could not extract meaningful text. Please fill in fields manually.' }
+
+      if (!result.income || result.income < 1000) {
+        result._warning = 'Could not find income figures in the document. Please fill in fields manually.'
+      }
     } else {
-      result = { ...MOCK_EXTRACTED, _warning: 'Default values shown.' }
+      result = { ...MOCK_EXTRACTED, _warning: 'Could not read any text from the document. Please fill in fields manually.' }
     }
 
     job.status = 'complete'
     job.result = result
   } catch (err) {
-    console.error('Extraction failed:', err)
+    console.error('Extraction final processing failed:', err)
     job.status = 'complete'
     job.result = { ...MOCK_EXTRACTED, _warning: 'Extraction encountered an error. Default values shown.' }
   }
