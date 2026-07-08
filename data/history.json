@@ -1,0 +1,34 @@
+[
+  {
+    "referenceNumber": "TAX-UH5V8ROA",
+    "filedAt": "2026-07-08T11:02:01.671Z",
+    "employerName": "Acme Corp",
+    "income": 450000,
+    "totalTax": 84771.43,
+    "payeWithheld": 85000,
+    "refund": 228.57,
+    "isRefund": true,
+    "breakdown": [
+      {
+        "label": "R 0 – R 237 100",
+        "rate": "18%",
+        "amount": 42678,
+        "taxable": 237100
+      },
+      {
+        "label": "R 237 101 – R 370 500",
+        "rate": "26%",
+        "amount": 34683.74,
+        "taxable": 133399
+      },
+      {
+        "label": "R 370 501 – R 512 800",
+        "rate": "31%",
+        "amount": 24644.69,
+        "taxable": 79499
+      }
+    ],
+    "grossTax": 102006.43,
+    "primaryRebate": 17235
+  }
+]

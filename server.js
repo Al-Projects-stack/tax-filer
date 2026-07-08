@@ -5,7 +5,7 @@ import { createRequire } from 'module'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import Tesseract from 'tesseract.js'
+import TesseractWorker from 'tesseract.js'
 import OpenAI from 'openai'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
@@ -157,13 +157,17 @@ async function processExtraction(jobId) {
 
       if (rawText.length < 50) {
         addStage(job, 'Running OCR on scanned document')
-        const { data } = await Tesseract.recognize(fileInfo.buffer, 'eng')
+        const worker = await TesseractWorker.createWorker('eng')
+        const { data } = await worker.recognize(fileInfo.buffer)
+        await worker.terminate()
         rawText = (data.text || '').trim()
         completeStage(job)
       }
     } else if (isImage) {
       addStage(job, 'Running OCR on image')
-      const { data } = await Tesseract.recognize(fileInfo.buffer, 'eng')
+      const worker = await TesseractWorker.createWorker('eng')
+      const { data } = await worker.recognize(fileInfo.buffer)
+      await worker.terminate()
       rawText = (data.text || '').trim()
       completeStage(job)
     } else {
@@ -193,7 +197,8 @@ async function processExtraction(jobId) {
 
     job.status = 'complete'
     job.result = result
-  } catch {
+  } catch (err) {
+    console.error('Extraction failed:', err)
     job.status = 'complete'
     job.result = { ...MOCK_EXTRACTED, _warning: 'Extraction encountered an error. Default values shown.' }
   }
