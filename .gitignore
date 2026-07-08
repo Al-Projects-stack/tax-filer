@@ -5,3 +5,5 @@ dev-server-err.log
 .env
 .env.local
 AGENTS.md
+
+eng.traineddata
