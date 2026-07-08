@@ -54,7 +54,7 @@ function StageIcon({ status }) {
   )
 }
 
-export default function ExtractStep({ onComplete }) {
+export default function ExtractStep({ onComplete, onBack }) {
   const [phase, setPhase] = useState('starting') // starting | processing | ready | failed
   const [stages, setStages] = useState([])
   const [warning, setWarning] = useState('')
@@ -279,7 +279,7 @@ export default function ExtractStep({ onComplete }) {
 
         <div className="flex flex-col sm:flex-row gap-3">
           <button
-            onClick={resetAndRetry}
+            onClick={onBack}
             className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 transition-colors shadow-sm"
           >
             Try Uploading Again

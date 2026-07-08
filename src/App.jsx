@@ -107,7 +107,7 @@ export default function App() {
 
             <div className="mt-8">
               {step === 1 && <UploadStep onComplete={handleUploaded} />}
-              {step === 2 && <ExtractStep onComplete={handleExtracted} />}
+              {step === 2 && <ExtractStep onComplete={handleExtracted} onBack={() => setStep(1)} />}
               {step === 3 && extractedData && (
                 <CalculateStep data={extractedData} onComplete={handleCalculated} />
               )}

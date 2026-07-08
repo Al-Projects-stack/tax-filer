@@ -33,6 +33,10 @@ function saveHistory(history) {
 const require = createRequire(import.meta.url)
 const { PDFParse } = require('pdf-parse')
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection (prevented crash):', err)
+})
+
 const app = express()
 const PORT = 3001
 
@@ -376,7 +380,9 @@ app.post('/api/extract', (req, res) => {
     },
   }
 
-  processExtraction(jobId)
+  processExtraction(jobId).catch(err => {
+    console.error('processExtraction crashed:', err)
+  })
 
   res.json({ jobId })
 })
