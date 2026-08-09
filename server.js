@@ -5,7 +5,6 @@ import { createRequire } from 'module'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import TesseractWorker from 'tesseract.js'
 import OpenAI from 'openai'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
@@ -27,11 +26,16 @@ function saveHistory(history) {
   try {
     if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
     writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2), 'utf-8')
-  } catch {}
+    return true
+  } catch (err) {
+    console.error('Failed to save history:', err)
+    return false
+  }
 }
 
 const require = createRequire(import.meta.url)
 const { PDFParse } = require('pdf-parse')
+const Tesseract = require('tesseract.js')
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection (prevented crash):', err)
@@ -70,9 +74,29 @@ const MOCK_EXTRACTED = {
   taxYear: 2025,
 }
 
-let uploadedFileInfo = null
 const jobs = {}
 const filingHistory = loadHistory()
+
+function createJob(fileInfo) {
+  const jobId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7)
+  const job = {
+    id: jobId,
+    status: 'uploaded',
+    stages: [],
+    result: null,
+    error: null,
+    fileInfo: {
+      filename: fileInfo.filename,
+      mimetype: fileInfo.mimetype,
+      size: fileInfo.size,
+      buffer: Buffer.from(fileInfo.buffer),
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  jobs[jobId] = job
+  return job
+}
 
 function addStage(job, name) {
   job.stages.push({ name, status: 'active' })
@@ -84,52 +108,76 @@ function completeStage(job) {
 }
 
 function parseWithRegex(rawText) {
-  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean)
-  const full = rawText
+  const cleanText = rawText.replace(/[\u2011\u2012\u2013\u2014]/g, '-')
+  const lines = cleanText.split('\n').map((l) => l.trim()).filter(Boolean)
+  const full = cleanText
 
-  const numbers = [...full.matchAll(/[Rr$]\s*([\d,]+\.?\d*)|(\d{3,}[,\d]*\.?\d*)/g)]
-    .map(m => parseFloat((m[1] || m[2]).replace(/,/g, '')))
-    .filter(n => !isNaN(n) && n > 0)
+  const extractNumber = (value) => {
+    if (!value) return null
+    const cleaned = String(value).replace(/[^\d.\-]/g, '').replace(/,/g, '')
+    const parsed = Number(cleaned)
+    return Number.isFinite(parsed) ? parsed : null
+  }
 
-  const incomeCandidates = numbers.filter(n => n >= 10000 && n <= 9999999)
-  const income = incomeCandidates.length > 0 ? Math.max(...incomeCandidates) : 0
+  const extractAmountFromLine = (line) => {
+    if (!line) return null
+    const currencyMatch = line.match(/(?:R|ZAR|\$)\s*([\d,]+(?:\.\d+)?)/i)
+    if (currencyMatch) return extractNumber(currencyMatch[1])
+    const genericMatch = line.match(/-?[\d,]+(?:\.\d+)?/)
+    return extractNumber(genericMatch?.[0])
+  }
 
-  const taxCandidates = numbers.filter(n => n >= 1000 && n <= income && n < income * 0.6)
-  const tax = taxCandidates.length > 0 ? Math.max(...taxCandidates) : 0
+  const employerEINMatch = full.match(/\b\d{2}-\d{7}\b/)
+  const employerEIN = employerEINMatch ? employerEINMatch[0] : ''
+  const textWithoutEIN = full.replace(/\b\d{2}-\d{7}\b/g, '')
+
+  const allNumbers = [...textWithoutEIN.matchAll(/-?[\d,]+(?:\.\d+)?/g)]
+    .map((m) => extractNumber(m[0]))
+    .filter((n) => typeof n === 'number' && !Number.isNaN(n) && n >= 0)
+
+  const findLine = (pattern) => lines.find((line) => pattern.test(line))
 
   let employerName = ''
-  for (const line of lines) {
-    if (/employer|company|pty\s*ltd|\(pty\)|inc\.?|corp\.?|llc/i.test(line) && line.length < 100) {
-      employerName = line.replace(/employer\s*:?\s*/i, '').trim()
-      break
-    }
+  const employerNameLine = findLine(/employer(?:'s)?\s+name|company name|employer name|employer/i)
+  if (employerNameLine) {
+    employerName = employerNameLine.replace(/.*(?:employer(?:'s)?\s+name|company name|employer name|employer)\s*:?/i, '').trim()
   }
   if (!employerName) {
-    for (const line of lines) {
-      if (/^[A-Z][a-z]+.*(?:ltd|inc|corp|pty|cc)$/i.test(line) && line.length < 80) {
-        employerName = line.trim()
-        break
-      }
-    }
+    const candidate = lines.find((line) => /^(?!\d)[A-Za-z].*(?:ltd|inc|corp|pty|company|services?|group)/i.test(line) && line.length < 100)
+    employerName = candidate ? candidate.trim() : ''
   }
-  if (!employerName && lines.length > 0) {
-    const nonEmpty = lines.filter(l => l.length > 3 && !/^\d/.test(l))
-    employerName = nonEmpty[0] || ''
+  if (!employerName) {
+    const candidate = lines.find((line) => line.length > 3 && !/\d/.test(line) && !/tax year|wages|salary|withheld|ein/i.test(line))
+    employerName = candidate ? candidate.trim() : ''
   }
 
-  const yearMatch = full.match(/\b(20\d{2})\b/)
-  const taxYear = yearMatch ? parseInt(yearMatch[1]) : 2025
+  const taxYearMatch = full.match(/\b(20\d{2})\b/)
+  const taxYear = taxYearMatch ? Number(taxYearMatch[1]) : 2025
+
+  const incomeLine = findLine(/wages|salary|total income|compensation|gross income/i)
+  const federalTaxLine = findLine(/federal.*(tax|withheld)|income tax withheld|paye|tax withheld/i)
+  const stateTaxLine = findLine(/state.*(tax|withheld)/i)
+  const socialSecurityLine = findLine(/social.*security.*wages?|ssw/i)
+  const medicareLine = findLine(/medicare.*wages?|medicare/i)
+
+  const reasonableIncome = allNumbers.filter((n) => n >= 100 && n <= 99999999)
+  const income = extractAmountFromLine(incomeLine) ?? reasonableIncome.sort((a, b) => b - a)[0] ?? 0
+  const wagesSalary = extractAmountFromLine(findLine(/wages|salary|compensation|gross income/i)) ?? income
+  const federalTaxWithheld = extractAmountFromLine(federalTaxLine) ?? allNumbers.filter((n) => n > 0 && n < (income || 99999999) && n < 999999 && n < (income || 99999999) * 0.6).sort((a, b) => b - a)[0] ?? 0
+  const stateTaxWithheld = extractAmountFromLine(stateTaxLine) ?? 0
+  const socialSecurityWages = extractAmountFromLine(socialSecurityLine) ?? income
+  const medicareWages = extractAmountFromLine(medicareLine) ?? income
 
   return {
     employerName,
-    employerEIN: '',
+    employerEIN,
     taxYear,
     income,
-    wagesSalary: income,
-    federalTaxWithheld: tax,
-    stateTaxWithheld: 0,
-    socialSecurityWages: income,
-    medicareWages: income,
+    wagesSalary,
+    federalTaxWithheld,
+    stateTaxWithheld,
+    socialSecurityWages,
+    medicareWages,
   }
 }
 
@@ -190,11 +238,19 @@ ${rawText}`
 
 async function processExtraction(jobId) {
   const job = jobs[jobId]
+  if (!job) return
   const fileInfo = job.fileInfo
+
+  job.status = 'processing'
+  job.updatedAt = new Date().toISOString()
+  job.error = null
+  job.result = null
+  job.stages = []
 
   if (!fileInfo || !fileInfo.buffer) {
     job.status = 'error'
     job.error = 'No file available for extraction'
+    job.updatedAt = new Date().toISOString()
     return
   }
 
@@ -208,28 +264,22 @@ async function processExtraction(jobId) {
       addStage(job, 'Reading PDF document')
       try {
         const parser = new PDFParse({ data: fileInfo.buffer })
-        rawText = (await parser.getText({ pageJoiner: '\n' })).trim()
+        const textResult = await parser.getText({ pageJoiner: '\n' })
+        rawText = (typeof textResult === 'string' ? textResult : textResult?.text || '').trim()
       } catch (pdfErr) {
         console.error('pdfParse failed:', pdfErr)
       }
       completeStage(job)
 
       if (rawText.length < 50) {
-        addStage(job, 'Running OCR on scanned document')
-        try {
-          const worker = await TesseractWorker.createWorker('eng')
-          const { data } = await worker.recognize(fileInfo.buffer)
-          await worker.terminate()
-          rawText = (data.text || '').trim()
-        } catch (ocrErr) {
-          console.error('OCR failed for PDF:', ocrErr)
-        }
+        addStage(job, 'Could not extract enough text from the PDF')
+        rawText = rawText.trim()
         completeStage(job)
       }
     } else if (isImage) {
       addStage(job, 'Running OCR on image')
       try {
-        const worker = await TesseractWorker.createWorker('eng')
+        const worker = await Tesseract.createWorker('eng')
         const { data } = await worker.recognize(fileInfo.buffer)
         await worker.terminate()
         rawText = (data.text || '').trim()
@@ -345,14 +395,16 @@ app.post('/api/upload', (req, res) => {
       return res.status(400).json({ error: 'No file provided.' })
     }
 
-    uploadedFileInfo = {
+    const job = createJob({
       filename: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
       buffer: req.file.buffer,
-    }
+    })
+
     res.json({
       success: true,
+      uploadId: job.id,
       file: {
         filename: req.file.originalname,
         mimetype: req.file.mimetype,
@@ -363,28 +415,37 @@ app.post('/api/upload', (req, res) => {
 })
 
 app.post('/api/extract', (req, res) => {
-  if (!uploadedFileInfo || !uploadedFileInfo.buffer) {
-    return res.status(400).json({ error: 'No file has been uploaded yet' })
+  const { uploadId } = req.body || {}
+  if (!uploadId) {
+    return res.status(400).json({ error: 'Missing upload ID. Please upload a file first.' })
   }
 
-  const jobId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7)
-
-  jobs[jobId] = {
-    status: 'processing',
-    stages: [],
-    result: null,
-    error: null,
-    fileInfo: {
-      ...uploadedFileInfo,
-      buffer: Buffer.from(uploadedFileInfo.buffer),
-    },
+  const job = jobs[uploadId]
+  if (!job) {
+    return res.status(404).json({ error: 'Upload not found. Please upload the file again.' })
   }
 
-  processExtraction(jobId).catch(err => {
+  if (job.status === 'processing') {
+    return res.json({ jobId: job.id })
+  }
+
+  if (job.status === 'complete') {
+    return res.json({ jobId: job.id })
+  }
+
+  job.status = 'queued'
+  job.updatedAt = new Date().toISOString()
+  processExtraction(job.id).catch((err) => {
     console.error('processExtraction crashed:', err)
+    const failedJob = jobs[job.id]
+    if (failedJob) {
+      failedJob.status = 'error'
+      failedJob.error = 'Extraction failed unexpectedly.'
+      failedJob.updatedAt = new Date().toISOString()
+    }
   })
 
-  res.json({ jobId })
+  res.json({ jobId: job.id })
 })
 
 app.get('/api/extract/:jobId', (req, res) => {
@@ -399,34 +460,53 @@ app.get('/api/extract/:jobId', (req, res) => {
 })
 
 app.post('/api/calculate', (req, res) => {
-  const data = req.body
-  const income = data.income || 450000
-  const paye = data.federalTaxWithheld || 0
+  const data = req.body || {}
+  const income = Number(data.income)
+  const paye = Number(data.federalTaxWithheld ?? data.payeWithheld ?? 0)
+
+  if (Number.isNaN(income)) {
+    return res.status(400).json({ error: 'Income must be a valid number.' })
+  }
+  if (Number.isNaN(paye)) {
+    return res.status(400).json({ error: 'Federal tax withheld must be a valid number.' })
+  }
+
   res.json(calculateSA(income, paye))
 })
 
 app.post('/api/file', (req, res) => {
+  const calc = req.body.calculation || {}
+  const income = Number(calc.income)
+  const payeWithheld = Number(calc.payeWithheld)
+  const totalTax = Number(calc.totalTax)
+  const refund = Number(calc.refund)
+
+  if (Number.isNaN(income) || Number.isNaN(payeWithheld) || Number.isNaN(totalTax) || Number.isNaN(refund)) {
+    return res.status(400).json({ error: 'Calculation payload is invalid.' })
+  }
+
   const ref = 'TAX-' + Array.from({ length: 8 }, () =>
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]
   ).join('')
-  const calc = req.body.calculation || {}
 
   const record = {
     referenceNumber: ref,
     filedAt: new Date().toISOString(),
-    employerName: req.body.employerName || '',
-    income: calc.income || 0,
-    totalTax: calc.totalTax || 0,
-    payeWithheld: calc.payeWithheld || 0,
-    refund: calc.refund || 0,
+    employerName: String(req.body.employerName || ''),
+    income,
+    totalTax,
+    payeWithheld,
+    refund,
     isRefund: calc.isRefund ?? true,
-    breakdown: calc.breakdown || [],
-    grossTax: calc.grossTax || 0,
-    primaryRebate: calc.primaryRebate || 0,
+    breakdown: Array.isArray(calc.breakdown) ? calc.breakdown : [],
+    grossTax: Number(calc.grossTax) || 0,
+    primaryRebate: Number(calc.primaryRebate) || 0,
   }
 
   filingHistory.unshift(record)
-  saveHistory(filingHistory)
+  if (!saveHistory(filingHistory)) {
+    return res.status(500).json({ error: 'Could not save filing history.' })
+  }
 
   res.json({ success: true, referenceNumber: ref, filedAt: record.filedAt })
 })
@@ -442,7 +522,9 @@ app.delete('/api/history/:referenceNumber', (req, res) => {
     return res.status(404).json({ error: 'Filing not found' })
   }
   filingHistory.splice(index, 1)
-  saveHistory(filingHistory)
+  if (!saveHistory(filingHistory)) {
+    return res.status(500).json({ error: 'Could not delete filing from history.' })
+  }
   res.json({ success: true })
 })
 
@@ -528,3 +610,4 @@ app.post('/api/receipt', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Tax API server running on http://localhost:${PORT}`)
 })
+

@@ -18,7 +18,7 @@ export default function UploadStep({ onComplete }) {
 
   const validateFile = useCallback((f) => {
     const ext = '.' + f.name.split('.').pop().toLowerCase()
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    if (!ALLOWED_EXTENSIONS.includes(ext) || (f.type && !ALLOWED_TYPES.includes(f.type))) {
       setError('This file type is not supported. Please upload a PDF, JPG, or PNG document.')
       setFile(null)
       return false
@@ -60,11 +60,13 @@ export default function UploadStep({ onComplete }) {
       const fd = new FormData()
       fd.append('file', file)
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      if (!res.ok) throw new Error('Upload failed')
-      await res.json()
-      onComplete()
-    } catch {
-      setError('Something went wrong. Please try again.')
+      const json = await res.json()
+      if (!res.ok || !json.uploadId) {
+        throw new Error(json.error || 'Upload failed')
+      }
+      onComplete(json.uploadId)
+    } catch (err) {
+      setError(err?.message || 'Something went wrong. Please try again.')
       setUploading(false)
     }
   }

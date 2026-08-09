@@ -21,7 +21,7 @@ Upload a tax document, extract data, calculate your return and file, all in one 
 - SARS 2025/2026 progressive tax brackets with primary rebate
 - Filing history dashboard with expandable breakdowns
 - Clean, flat fintech UI built with React + Tailwind CSS
-- In-memory only — no database, no auth, no persistence
+- In-memory only for extracted data and processing — filing history is persisted to `data/history.json`, and there is no auth or production database
 
 ## Run locally
 
