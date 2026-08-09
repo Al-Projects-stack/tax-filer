@@ -22,13 +22,17 @@ function useDarkMode() {
 export default function App() {
   const [step, setStep] = useState(1)
   const [view, setView] = useState('flow') // 'flow' | 'history'
+  const [uploadId, setUploadId] = useState(null)
   const [extractedData, setExtractedData] = useState(null)
   const [calculation, setCalculation] = useState(null)
   const [referenceNumber, setReferenceNumber] = useState(null)
   const [filingStatus, setFilingStatus] = useState(null)
   const [dark, toggleDark] = useDarkMode()
 
-  const handleUploaded = () => setStep(2)
+  const handleUploaded = (id) => {
+    setUploadId(id)
+    setStep(2)
+  }
 
   const handleExtracted = (data) => {
     setExtractedData(data)
@@ -47,6 +51,7 @@ export default function App() {
 
   const handleReset = () => {
     setStep(1)
+    setUploadId(null)
     setExtractedData(null)
     setCalculation(null)
     setReferenceNumber(null)
@@ -107,7 +112,7 @@ export default function App() {
 
             <div className="mt-8">
               {step === 1 && <UploadStep onComplete={handleUploaded} />}
-              {step === 2 && <ExtractStep onComplete={handleExtracted} onBack={() => setStep(1)} />}
+              {step === 2 && <ExtractStep uploadId={uploadId} onComplete={handleExtracted} onBack={() => setStep(1)} />}
               {step === 3 && extractedData && (
                 <CalculateStep data={extractedData} onComplete={handleCalculated} />
               )}

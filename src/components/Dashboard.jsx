@@ -11,17 +11,31 @@ function shortDate(iso) {
 }
 
 export default function Dashboard({ onNewFiling }) {
-  const [records, setRecords] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('filingHistory')) || [] } catch { return [] }
-  })
+  const [records, setRecords] = useState([])
   const [expanded, setExpanded] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     fetch('/api/history')
-      .then((r) => r.json())
-      .then((data) => { setRecords(data); localStorage.setItem('filingHistory', JSON.stringify(data)) })
-      .catch(() => {})
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to load history')
+        return r.json()
+      })
+      .then((data) => {
+        setRecords(data)
+        localStorage.setItem('filingHistory', JSON.stringify(data))
+        setLoading(false)
+      })
+      .catch(() => {
+        const fallback = (() => {
+          try { return JSON.parse(localStorage.getItem('filingHistory') || '[]') } catch { return [] }
+        })()
+        setRecords(fallback)
+        setLoadError(true)
+        setLoading(false)
+      })
   }, [])
 
   const toggle = (ref) => setExpanded(expanded === ref ? null : ref)
@@ -36,7 +50,9 @@ export default function Dashboard({ onNewFiling }) {
         localStorage.setItem('filingHistory', JSON.stringify(next))
         if (expanded === ref) setExpanded(null)
       }
-    } catch {}
+    } catch (err) {
+      console.error('Could not delete filing:', err)
+    }
     setDeleting(null)
   }
 
@@ -46,7 +62,9 @@ export default function Dashboard({ onNewFiling }) {
         <div>
           <h2 className="text-2xl font-heading font-bold text-gray-900 dark:text-gray-100">Filing History</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {records.length === 0
+            {loading
+              ? 'Loading history...'
+              : records.length === 0
               ? 'No filings yet'
               : `${records.length} filing${records.length === 1 ? '' : 's'} on record`}
           </p>
@@ -59,7 +77,13 @@ export default function Dashboard({ onNewFiling }) {
         </button>
       </div>
 
-      {records.length === 0 && (
+      {loadError && records.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Showing locally cached filings because the server history could not be loaded.
+        </div>
+      )}
+
+      {records.length === 0 && !loading && (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-12 text-center shadow-sm">
           <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

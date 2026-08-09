@@ -2,12 +2,18 @@ import { useState } from 'react'
 
 export default function FileStep({ calculation, extractedData, onComplete, onReset, onViewHistory }) {
   const [status, setStatus] = useState('confirm')
+  const [errorMessage, setErrorMessage] = useState('')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [filedAt, setFiledAt] = useState('')
 
   const fmt = (n) => 'R ' + Math.abs(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   const handleDownloadReceipt = async () => {
+    if (!referenceNumber) {
+      setErrorMessage('No filing reference is available to download a receipt.')
+      return
+    }
+
     try {
       const res = await fetch('/api/receipt', {
         method: 'POST',
@@ -27,7 +33,10 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
           breakdown: calculation.breakdown,
         }),
       })
-      if (!res.ok) throw new Error('Download failed')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Download failed')
+      }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -37,13 +46,16 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-    } catch {
-      // silently fail — receipt is optional
+      setErrorMessage('')
+    } catch (err) {
+      setErrorMessage(err?.message || 'Could not download receipt. Please try again.')
     }
   }
 
   const handleSubmit = async () => {
     setStatus('submitting')
+    setErrorMessage('')
+
     try {
       const res = await fetch('/api/file', {
         method: 'POST',
@@ -51,11 +63,15 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         body: JSON.stringify({ calculation, employerName: extractedData?.employerName || '' }),
       })
       const json = await res.json()
+      if (!res.ok || !json.referenceNumber) {
+        throw new Error(json.error || 'Submission failed')
+      }
       setReferenceNumber(json.referenceNumber)
       setFiledAt(json.filedAt)
       onComplete(json.referenceNumber, json.filedAt)
       setStatus('success')
-    } catch {
+    } catch (err) {
+      setErrorMessage(err?.message || 'Something went wrong while submitting your return.')
       setStatus('error')
     }
   }
@@ -105,6 +121,12 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         >
           Submit Return
         </button>
+
+        {errorMessage && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mt-3">
+            {errorMessage}
+          </div>
+        )}
       </div>
     )
   }
@@ -142,7 +164,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
           </svg>
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-4">Submission failed</h3>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Please try again.</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">{errorMessage || 'Please try again.'}</p>
         <button
           onClick={() => setStatus('confirm')}
           className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

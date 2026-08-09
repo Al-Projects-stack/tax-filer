@@ -3,13 +3,13 @@ import { useState, useEffect, useRef } from 'react'
 const INITIAL_FORM = {
   employerName: '',
   employerEIN: '',
-  taxYear: 2025,
-  income: 0,
-  wagesSalary: 0,
-  federalTaxWithheld: 0,
-  stateTaxWithheld: 0,
-  socialSecurityWages: 0,
-  medicareWages: 0,
+  taxYear: '2025',
+  income: '',
+  wagesSalary: '',
+  federalTaxWithheld: '',
+  stateTaxWithheld: '',
+  socialSecurityWages: '',
+  medicareWages: '',
 }
 
 const NUMERIC_FIELDS = new Set([
@@ -28,6 +28,19 @@ const FIELD_LABELS = {
   stateTaxWithheld: 'State Tax Withheld (Box 17)',
   socialSecurityWages: 'Social Security Wages (Box 3)',
   medicareWages: 'Medicare Wages (Box 5)',
+}
+
+function parseNumberValue(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const normalized = String(value).trim().replace(/[,\s]/g, '')
+  if (normalized === '' || normalized === '-' || normalized === '.'){ return null }
+  const number = Number(normalized)
+  return Number.isFinite(number) ? number : null
+}
+
+function formatExtractedValue(value) {
+  if (value === undefined || value === null) return ''
+  return String(value)
 }
 
 function StageIcon({ status }) {
@@ -54,7 +67,7 @@ function StageIcon({ status }) {
   )
 }
 
-export default function ExtractStep({ onComplete, onBack }) {
+export default function ExtractStep({ uploadId, onComplete, onBack }) {
   const [phase, setPhase] = useState('starting') // starting | processing | ready | failed
   const [stages, setStages] = useState([])
   const [warning, setWarning] = useState('')
@@ -76,18 +89,30 @@ export default function ExtractStep({ onComplete, onBack }) {
 
   useEffect(() => {
     startExtraction.current = async () => {
+      if (!uploadId) {
+        setWarning('No uploaded file was found. Please upload your document again.')
+        setPhase('failed')
+        return
+      }
+
       try {
-        const res = await fetch('/api/extract', { method: 'POST' })
-        if (!res.ok) throw new Error('Failed to start extraction')
-        const { jobId } = await res.json()
-        jobIdRef.current = jobId
+        const res = await fetch('/api/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uploadId }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.jobId) {
+          throw new Error(data.error || 'Failed to start extraction')
+        }
+        jobIdRef.current = data.jobId
         setPhase('processing')
-      } catch {
-        setWarning('We could not start the extraction process. This is usually a temporary issue.')
+      } catch (err) {
+        setWarning(err?.message || 'We could not start the extraction process. This is usually a temporary issue.')
         setPhase('failed')
       }
     }
-  }, [])
+  }, [uploadId])
 
   useEffect(() => {
     if (phase === 'starting') {
@@ -123,13 +148,13 @@ export default function ExtractStep({ onComplete, onBack }) {
           setFormData({
             employerName: r.employerName || '',
             employerEIN: r.employerEIN || '',
-            taxYear: r.taxYear || 2025,
-            income: typeof r.income === 'number' ? r.income : 0,
-            wagesSalary: typeof r.wagesSalary === 'number' ? r.wagesSalary : (typeof r.income === 'number' ? r.income : 0),
-            federalTaxWithheld: typeof r.federalTaxWithheld === 'number' ? r.federalTaxWithheld : 0,
-            stateTaxWithheld: typeof r.stateTaxWithheld === 'number' ? r.stateTaxWithheld : 0,
-            socialSecurityWages: typeof r.socialSecurityWages === 'number' ? r.socialSecurityWages : 0,
-            medicareWages: typeof r.medicareWages === 'number' ? r.medicareWages : 0,
+            taxYear: formatExtractedValue(r.taxYear || '2025'),
+            income: formatExtractedValue(r.income ?? ''),
+            wagesSalary: formatExtractedValue(r.wagesSalary ?? r.income ?? ''),
+            federalTaxWithheld: formatExtractedValue(r.federalTaxWithheld ?? ''),
+            stateTaxWithheld: formatExtractedValue(r.stateTaxWithheld ?? ''),
+            socialSecurityWages: formatExtractedValue(r.socialSecurityWages ?? ''),
+            medicareWages: formatExtractedValue(r.medicareWages ?? ''),
           })
           if (r._warning) setWarning(r._warning)
           setPhase('ready')
@@ -146,7 +171,7 @@ export default function ExtractStep({ onComplete, onBack }) {
     }
 
     poll()
-    const interval = setInterval(poll, 400)
+    const interval = setInterval(poll, 1000)
     pollRef.current = interval
 
     return () => {
@@ -158,34 +183,50 @@ export default function ExtractStep({ onComplete, onBack }) {
   const handleChange = (field) => (e) => {
     const raw = e.target.value
     if (NUMERIC_FIELDS.has(field)) {
-      if (raw === '' || raw === '-') {
-        setFormData((prev) => ({ ...prev, [field]: raw }))
-        return
-      }
-      const num = Number(raw)
-      if (!isNaN(num)) {
-        setFormData((prev) => ({ ...prev, [field]: num }))
+      const normalized = raw.replace(/[^0-9.,\-]/g, '')
+      setFormData((prev) => ({ ...prev, [field]: normalized }))
+      if (errors[field]) {
         setErrors((prev) => {
           const next = { ...prev }
           delete next[field]
           return next
         })
       }
-    } else {
-      setFormData((prev) => ({ ...prev, [field]: raw }))
+      return
     }
+
+    setFormData((prev) => ({ ...prev, [field]: raw }))
   }
 
   const handleBlur = (field) => () => {
-    const val = formData[field]
-    if (NUMERIC_FIELDS.has(field)) {
-      if (val === '' || val === '-' || val === 0) {
-        setFormData((prev) => ({ ...prev, [field]: 0 }))
+    const rawValue = formData[field]
+    if (!NUMERIC_FIELDS.has(field)) return
+
+    const parsed = parseNumberValue(rawValue)
+    if (parsed === null) {
+      if (field === 'income' || field === 'taxYear') {
+        setErrors((prev) => ({ ...prev, [field]: 'Must be a valid number' }))
+      } else {
+        setFormData((prev) => ({ ...prev, [field]: '' }))
       }
-      if (val === '' || isNaN(Number(val))) {
-        setErrors((prev) => ({ ...prev, [field]: 'Must be a number' }))
-      }
+      return
     }
+
+    if (field === 'income' && parsed <= 0) {
+      setErrors((prev) => ({ ...prev, [field]: 'Income must be greater than 0' }))
+      return
+    }
+    if (field === 'taxYear' && (parsed < 1900 || parsed > 2100)) {
+      setErrors((prev) => ({ ...prev, [field]: 'Enter a valid 4-digit tax year' }))
+      return
+    }
+
+    setFormData((prev) => ({ ...prev, [field]: String(parsed) }))
+    setErrors((prev) => {
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const handleContinue = () => {
@@ -194,12 +235,28 @@ export default function ExtractStep({ onComplete, onBack }) {
     const newErrors = {}
 
     for (const key of NUMERIC_FIELDS) {
-      const v = cleaned[key]
-      if (typeof v !== 'number' || isNaN(v)) {
+      const parsed = parseNumberValue(cleaned[key])
+      if (parsed === null) {
+        if (key === 'income' || key === 'taxYear') {
+          newErrors[key] = key === 'income' ? 'Income must be a valid number greater than 0' : 'Enter a valid 4-digit tax year'
+          hasError = true
+        }
         cleaned[key] = 0
-        newErrors[key] = 'Invalid number, reset to 0'
+        continue
+      }
+      if (key === 'income' && parsed <= 0) {
+        newErrors[key] = 'Income must be greater than 0'
         hasError = true
       }
+      if (key === 'taxYear' && (parsed < 1900 || parsed > 2100)) {
+        newErrors[key] = 'Enter a valid 4-digit tax year'
+        hasError = true
+      }
+      cleaned[key] = parsed
+    }
+
+    if (!cleaned.wagesSalary) {
+      cleaned.wagesSalary = cleaned.income
     }
 
     setErrors(newErrors)
