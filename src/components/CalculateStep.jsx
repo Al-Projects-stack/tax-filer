@@ -1,5 +1,22 @@
 import { useState, useEffect } from 'react'
 
+function useCountUp(target, duration = 1000) {
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    let raf
+    const start = performance.now()
+    const tick = (t) => {
+      const p = Math.min(1, (t - start) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setVal(target * eased)
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return val
+}
+
 export default function CalculateStep({ data, onComplete }) {
   const [calc, setCalc] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -39,6 +56,8 @@ export default function CalculateStep({ data, onComplete }) {
     run()
     return () => { cancelled = true }
   }, [data])
+
+  const animatedRefund = useCountUp(calc ? Math.abs(calc.refund) : 0)
 
   if (loading) {
     return (
@@ -85,12 +104,12 @@ export default function CalculateStep({ data, onComplete }) {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
+      <div className="text-center anim-fade-up">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Your tax calculation</h2>
         <p className="text-gray-500 dark:text-gray-400 mt-1">SARS income tax tables &middot; {calc.taxYear}</p>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm anim-fade-up" style={{ animationDelay: '100ms' }}>
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Income Summary</h3>
         </div>
@@ -118,7 +137,7 @@ export default function CalculateStep({ data, onComplete }) {
         </div>
         <div className="px-6 py-4 space-y-3">
           {calc.breakdown.map((b, i) => (
-            <div key={i} className="flex justify-between text-sm">
+            <div key={i} className="flex justify-between text-sm anim-fade-up" style={{ animationDelay: `${Math.min(i, 7) * 60}ms` }}>
               <span className="text-gray-500 dark:text-gray-400">{b.label}</span>
               <span className="text-gray-500 dark:text-gray-400 tabular-nums">{b.rate}</span>
               <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(b.amount)}</span>
@@ -180,7 +199,7 @@ export default function CalculateStep({ data, onComplete }) {
               </p>
             </div>
             <span className={`text-2xl font-extrabold tabular-nums ${calc.isRefund ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {calc.isRefund ? '' : '-'}{fmt(calc.refund)}
+              {calc.isRefund ? '' : '-'}{fmt(animatedRefund)}
             </span>
           </div>
         </div>
@@ -188,7 +207,7 @@ export default function CalculateStep({ data, onComplete }) {
 
       <button
         onClick={() => onComplete(calc)}
-        className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-sm"
+        className="press w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-sm"
       >
         Continue to File
       </button>

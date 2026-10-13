@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import UploadSuccessPopup from './UploadSuccessPopup'
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png']
@@ -10,6 +11,8 @@ export default function UploadStep({ onComplete }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
+  const [showPopup, setShowPopup] = useState(false)
+  const [uploadedId, setUploadedId] = useState(null)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -64,7 +67,9 @@ export default function UploadStep({ onComplete }) {
       if (!res.ok || !json.uploadId) {
         throw new Error(json.error || 'Upload failed')
       }
-      onComplete(json.uploadId)
+      setUploadedId(json.uploadId)
+      setUploading(false)
+      setShowPopup(true)
     } catch (err) {
       setError(err?.message || 'Something went wrong. Please try again.')
       setUploading(false)
@@ -79,7 +84,7 @@ export default function UploadStep({ onComplete }) {
 
   return (
     <div className="space-y-8">
-      <div className="text-center space-y-3 pt-4">
+      <div className="text-center space-y-3 pt-4 anim-fade-up">
         <h1 className="text-4xl sm:text-5xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">
           Return
         </h1>
@@ -93,7 +98,8 @@ export default function UploadStep({ onComplete }) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={() => inputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200 ${
+        style={{ animationDelay: '90ms' }}
+        className={`anim-fade-up relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200 ${
           dragOver
             ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 scale-[1.01]'
             : file
@@ -151,7 +157,7 @@ export default function UploadStep({ onComplete }) {
       </div>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
+        <div key={error} className="anim-shake bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
@@ -159,7 +165,8 @@ export default function UploadStep({ onComplete }) {
       <button
         onClick={handleUpload}
         disabled={!file || uploading}
-        className={`w-full py-3.5 rounded-xl font-semibold text-base transition-all duration-200 ${
+        style={{ animationDelay: '180ms' }}
+        className={`press anim-fade-up w-full py-3.5 rounded-xl font-semibold text-base transition-all duration-200 ${
           !file || uploading
             ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
             : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-sm'
@@ -177,6 +184,14 @@ export default function UploadStep({ onComplete }) {
           'Upload'
         )}
       </button>
+
+      {showPopup && file && (
+        <UploadSuccessPopup
+          fileName={file.name}
+          fileSize={formatSize(file.size)}
+          onContinue={() => { setShowPopup(false); onComplete(uploadedId) }}
+        />
+      )}
     </div>
   )
 }

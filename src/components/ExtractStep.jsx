@@ -55,6 +55,21 @@ function formatExtractedValue(value) {
   return String(value)
 }
 
+const TAX_QUOTES = [
+  'Death and taxes — we handle one of them.',
+  'Counting your rands so you don\u2019t have to.',
+  'Somewhere, an accountant just felt a disturbance.',
+  'Reading the fine print so you don\u2019t have to.',
+  'Tax season: the only season that lasts all year.',
+  'Your refund called. It says \u2018almost there\u2019.',
+  'We do math so well, calculators get jealous.',
+  'Ticking boxes you didn\u2019t know existed.',
+  'Faster than a loadshedding schedule change.',
+  'eFiling wishes it was this smooth.',
+  'Turning paperwork into peace of mind...',
+  'SARS tables have never looked this good.',
+]
+
 function StageIcon({ status }) {
   if (status === 'done') {
     return (
@@ -85,8 +100,17 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
   const [warning, setWarning] = useState('')
   const [formData, setFormData] = useState({ ...INITIAL_FORM })
   const [errors, setErrors] = useState({})
+  const [quoteIdx, setQuoteIdx] = useState(0)
   const pollRef = useRef(null)
   const jobIdRef = useRef(null)
+
+  useEffect(() => {
+    if (phase !== 'starting' && phase !== 'processing') return
+    const id = setInterval(() => {
+      setQuoteIdx((i) => (i + 1) % TAX_QUOTES.length)
+    }, 3500)
+    return () => clearInterval(id)
+  }, [phase])
 
   const resetAndRetry = () => {
     setPhase('starting')
@@ -287,12 +311,18 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
   if (phase === 'starting' || phase === 'processing') {
     return (
       <div className="space-y-6">
-        <div className="text-center">
+        <div className="text-center anim-fade-up">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Extracting your data</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Reading your document to extract tax information</p>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl px-5 py-4 text-center anim-fade-up" style={{ animationDelay: '80ms' }}>
+          <p key={quoteIdx} className="anim-quote text-sm font-medium text-blue-700 dark:text-blue-300 italic">
+            &ldquo;{TAX_QUOTES[quoteIdx]}&rdquo;
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm anim-fade-up" style={{ animationDelay: '160ms' }}>
           <div className="space-y-4">
             {stages.length === 0 && (
               <div className="flex items-center gap-3 py-2">
@@ -304,7 +334,7 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
             )}
 
             {stages.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 py-2">
+              <div key={s.name} className="flex items-center gap-3 py-2 anim-fade-up" style={{ animationDelay: `${Math.min(i, 6) * 70}ms` }}>
                 <StageIcon status={s.status} />
                 <span
                   className={`text-sm ${
@@ -354,13 +384,13 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onBack}
-            className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 transition-colors shadow-sm"
+            className="press flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 transition-colors shadow-sm"
           >
             Try Uploading Again
           </button>
           <button
             onClick={() => setPhase('ready')}
-            className="flex-1 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="press flex-1 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Enter Details Manually
           </button>

@@ -110,7 +110,7 @@ export default function App() {
           <>
             <StepIndicator currentStep={step} steps={steps} />
 
-            <div className="mt-8">
+            <div key={`${step}-${view}`} className="mt-8 anim-fade-up">
               {step === 1 && <UploadStep onComplete={handleUploaded} />}
               {step === 2 && <ExtractStep uploadId={uploadId} onComplete={handleExtracted} onBack={() => setStep(1)} />}
               {step === 3 && extractedData && (

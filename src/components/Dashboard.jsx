@@ -71,7 +71,7 @@ export default function Dashboard({ onNewFiling }) {
         </div>
         <button
           onClick={onNewFiling}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+          className="press px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
         >
           New Filing
         </button>
@@ -93,7 +93,7 @@ export default function Dashboard({ onNewFiling }) {
           <p className="mt-4 text-gray-500 dark:text-gray-400">No filings have been submitted yet.</p>
           <button
             onClick={onNewFiling}
-            className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="press mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
             Submit Your First Return
           </button>
@@ -101,14 +101,15 @@ export default function Dashboard({ onNewFiling }) {
       )}
 
       <div className="space-y-3">
-        {records.map((r) => (
+        {records.map((r, idx) => (
           <div
             key={r.referenceNumber}
-            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm"
+            className="anim-fade-up bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm"
+            style={{ animationDelay: `${Math.min(idx, 8) * 60}ms` }}
           >
             <button
               onClick={() => toggle(r.referenceNumber)}
-              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="press w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                 <div>
@@ -144,7 +145,7 @@ export default function Dashboard({ onNewFiling }) {
             </button>
 
             {expanded === r.referenceNumber && (
-              <div className="px-5 pb-4 border-t border-gray-100 dark:border-gray-700">
+              <div key={`open-${r.referenceNumber}`} className="anim-fade-in px-5 pb-4 border-t border-gray-100 dark:border-gray-700">
                 <div className="pt-4 grid grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
                   <div>
                     <span className="text-gray-400 dark:text-gray-500">Reference</span>

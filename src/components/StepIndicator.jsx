@@ -19,7 +19,8 @@ export default function StepIndicator({ currentStep, steps }) {
           <div key={s.num} className="flex items-center">
             <div className="flex flex-col items-center">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                key={`${s.num}-${isCompleted ? 'done' : isCurrent ? 'now' : 'todo'}`}
+                className={`anim-pop-in relative w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
                   isCompleted
                     ? 'bg-blue-600 text-white'
                     : isCurrent
@@ -27,6 +28,9 @@ export default function StepIndicator({ currentStep, steps }) {
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
                 }`}
               >
+                {isCurrent && (
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-30 animate-ping" />
+                )}
                 {isCompleted ? (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

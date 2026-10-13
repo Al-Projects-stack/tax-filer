@@ -1,10 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+
+const SUBMIT_MESSAGES = [
+  'Establishing secure connection',
+  'Encrypting your return',
+  'Transmitting to SARS eFiling',
+  'Confirming receipt',
+]
+
+const CONFETTI_COLORS = ['#2563eb', '#60a5fa', '#34d399', '#9ca3af', '#bfdbfe']
 
 export default function FileStep({ calculation, extractedData, onComplete, onReset, onViewHistory }) {
   const [status, setStatus] = useState('confirm')
   const [errorMessage, setErrorMessage] = useState('')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [filedAt, setFiledAt] = useState('')
+  const [msgIdx, setMsgIdx] = useState(0)
+
+  useEffect(() => {
+    if (status !== 'submitting') return
+    setMsgIdx(0)
+    const id = setInterval(() => {
+      setMsgIdx((i) => (i + 1) % SUBMIT_MESSAGES.length)
+    }, 2000)
+    return () => clearInterval(id)
+  }, [status])
+
+  const confetti = useMemo(() => (
+    Array.from({ length: 28 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      width: 6 + Math.random() * 5,
+      height: 8 + Math.random() * 7,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      delay: Math.random() * 0.7,
+      duration: 2.2 + Math.random() * 1.1,
+    }))
+  ), [])
 
   const fmt = (n) => 'R ' + Math.abs(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -140,7 +171,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
 
         <button
           onClick={handleSubmit}
-          className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-sm"
+          className="press w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-sm"
         >
           Submit Return
         </button>
@@ -172,7 +203,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
           <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
             <div className="bg-blue-600 h-1.5 rounded-full animate-pulse" style={{ width: '65%' }} />
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">Establishing secure connection</p>
+          <p key={msgIdx} className="anim-quote text-xs text-gray-400 dark:text-gray-500 mt-2">{SUBMIT_MESSAGES[msgIdx]}...</p>
         </div>
       </div>
     )
@@ -199,11 +230,29 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
   }
 
   return (
-    <div className="space-y-8 text-center py-6">
-      <div className="relative">
+    <div className="relative space-y-8 text-center py-6 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        {confetti.map((c) => (
+          <span
+            key={c.id}
+            className="confetti-piece"
+            style={{
+              left: `${c.left}%`,
+              width: c.width,
+              height: c.height,
+              backgroundColor: c.color,
+              animationDelay: `${c.delay}s`,
+              animationDuration: `${c.duration}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative anim-pop-in">
         <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
-          <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          <svg className="check-draw w-12 h-12" fill="none" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <circle cx="12" cy="12" r="10" stroke="currentColor" className="text-green-200 dark:text-green-800" strokeWidth={2} />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12.5l2.5 2.5L16 9.5" className="text-green-600 dark:text-green-400" />
           </svg>
         </div>
         <div className="absolute -top-1 -right-1 sm:right-20 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -213,12 +262,12 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         </div>
       </div>
 
-      <div>
+      <div className="anim-fade-up" style={{ animationDelay: '150ms' }}>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Return Filed Successfully!</h2>
         <p className="text-gray-500 dark:text-gray-400 mt-2">Your return has been accepted by SARS.</p>
       </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 inline-block mx-auto shadow-sm">
+        <div className="anim-fade-up bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 inline-block mx-auto shadow-sm" style={{ animationDelay: '250ms' }}>
         <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">Reference Number</p>
         <p className="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100 mt-1 tracking-wide">
           {referenceNumber}
@@ -228,7 +277,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         </p>
       </div>
 
-      <div className={`bg-white dark:bg-gray-900 border rounded-2xl p-6 shadow-sm max-w-sm mx-auto ${calculation.isRefund ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
+      <div className={`anim-fade-up bg-white dark:bg-gray-900 border rounded-2xl p-6 shadow-sm max-w-sm mx-auto ${calculation.isRefund ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`} style={{ animationDelay: '350ms' }}>
         <p className={`text-sm font-medium ${calculation.isRefund ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
           {calculation.isRefund ? 'Your refund' : 'Amount to pay'}
         </p>
@@ -244,7 +293,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
 
       <button
         onClick={handleDownloadReceipt}
-        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 rounded-xl font-semibold text-base hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 shadow-sm"
+        className="press inline-flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 rounded-xl font-semibold text-base hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 shadow-sm"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -255,13 +304,13 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         <button
           onClick={onViewHistory}
-          className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm"
+          className="press w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm"
         >
           View Filing History
         </button>
         <button
           onClick={onReset}
-          className="w-full sm:w-auto inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm"
+          className="press w-full sm:w-auto inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

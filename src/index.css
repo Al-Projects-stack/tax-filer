@@ -1,3 +1,138 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------- Return animation system (dependency-free) ---------- */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+  60% { opacity: 1; transform: scale(1.02) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes quoteSwap {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes drawRing {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translateY(-10px) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(340px) rotate(540deg); }
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+
+.anim-fade-up {
+  opacity: 0;
+  animation: fadeUp 0.5s ease both;
+}
+
+.anim-fade-in {
+  opacity: 0;
+  animation: fadeIn 0.4s ease both;
+}
+
+.anim-pop-in {
+  opacity: 0;
+  animation: popIn 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.anim-quote {
+  animation: quoteSwap 0.5s ease both;
+}
+
+.anim-shake {
+  animation: shakeX 0.45s ease both;
+}
+
+.anim-float {
+  animation: floatY 3.5s ease-in-out infinite;
+}
+
+.anim-spin-slow {
+  animation: spinSlow 6s linear infinite;
+}
+
+/* Press feedback for every clickable surface */
+.press {
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.press:active {
+  transform: scale(0.96);
+}
+
+/* Animated success checkmark */
+.check-draw circle {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawRing 0.6s ease forwards;
+}
+.check-draw path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: drawCheck 0.45s 0.45s ease forwards;
+}
+
+/* Confetti pieces (positions set inline) */
+.confetti-piece {
+  position: absolute;
+  top: -16px;
+  opacity: 0;
+  border-radius: 2px;
+  animation: confettiFall linear both;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up,
+  .anim-fade-in,
+  .anim-pop-in,
+  .anim-quote,
+  .anim-shake,
+  .anim-float,
+  .anim-spin-slow,
+  .confetti-piece {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .check-draw circle,
+  .check-draw path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .press:active {
+    transform: none;
+  }
+}
