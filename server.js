@@ -112,61 +112,95 @@ function parseWithRegex(rawText) {
   const lines = cleanText.split('\n').map((l) => l.trim()).filter(Boolean)
   const full = cleanText
 
-  const extractNumber = (value) => {
-    if (!value) return null
-    const cleaned = String(value).replace(/[^\d.\-]/g, '').replace(/,/g, '')
+  const toNumber = (value) => {
+    if (value === null || value === undefined) return null
+    const cleaned = String(value).replace(/,/g, '').trim()
+    if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return null
     const parsed = Number(cleaned)
     return Number.isFinite(parsed) ? parsed : null
   }
 
-  const extractAmountFromLine = (line) => {
+  // Amount appearing AFTER a label on the same line. Prefers R-prefixed
+  // amounts so SARS codes like 3601/4102/4141 are never mistaken for money.
+  const amountAfter = (line, labelPattern) => {
     if (!line) return null
-    const currencyMatch = line.match(/(?:R|ZAR|\$)\s*([\d,]+(?:\.\d+)?)/i)
-    if (currencyMatch) return extractNumber(currencyMatch[1])
-    const genericMatch = line.match(/-?[\d,]+(?:\.\d+)?/)
-    return extractNumber(genericMatch?.[0])
+    const m = line.match(labelPattern)
+    if (!m) return null
+    const after = line.slice((m.index ?? 0) + m[0].length)
+    const prefixed = after.match(/(?:R|ZAR|\$)\s*(-?[\d,]+(?:\.\d+)?)/i)
+    if (prefixed) return toNumber(prefixed[1])
+    const bare = after.match(/(-?[\d,]+(?:\.\d+)?)/)
+    return toNumber(bare?.[1])
+  }
+
+  const firstAmount = (line) => {
+    if (!line) return null
+    const m = line.match(/(?:R|ZAR|\$)\s*(-?[\d,]+(?:\.\d+)?)|(-?[\d,]+(?:\.\d+)?)/i)
+    return toNumber(m?.[1] ?? m?.[2])
   }
 
   const employerEINMatch = full.match(/\b\d{2}-\d{7}\b/)
   const employerEIN = employerEINMatch ? employerEINMatch[0] : ''
-  const textWithoutEIN = full.replace(/\b\d{2}-\d{7}\b/g, '')
 
-  const allNumbers = [...textWithoutEIN.matchAll(/-?[\d,]+(?:\.\d+)?/g)]
-    .map((m) => extractNumber(m[0]))
-    .filter((n) => typeof n === 'number' && !Number.isNaN(n) && n >= 0)
+  // Strip long ID / ref / cert runs (tax numbers, cert numbers, ref numbers)
+  // so giant identifiers can never win the numeric heuristics.
+  const numbersText = full.replace(/\b\d{2}-\d{7}\b/g, ' ').replace(/\b\d{7,}\b/g, ' ')
+  const allNumbers = [...numbersText.matchAll(/-?[\d,]+(?:\.\d+)?/g)]
+    .map((m) => toNumber(m[0]))
+    .filter((n) => n !== null && n >= 0)
 
   const findLine = (pattern) => lines.find((line) => pattern.test(line))
 
   let employerName = ''
-  const employerNameLine = findLine(/employer(?:'s)?\s+name|company name|employer name|employer/i)
-  if (employerNameLine) {
-    employerName = employerNameLine.replace(/.*(?:employer(?:'s)?\s+name|company name|employer name|employer)\s*:?/i, '').trim()
+  const employerLine = findLine(/employer/i)
+  if (employerLine) {
+    employerName = employerLine
+      .replace(/.*employer(?:'s)?(?:\s+name)?\s*:?/i, '')
+      .replace(/\s*(ref\s*no|tax\s*no|taxno|cert\s*#|certificate\s*(no|#)?|emp\s*name|employee\s*name|yr\s*:|tax\s*year|income\s*tax).*$/i, '')
+      .replace(/[.·•:;\-]+$/g, '')
+      .trim()
   }
   if (!employerName) {
     const candidate = lines.find((line) => /^(?!\d)[A-Za-z].*(?:ltd|inc|corp|pty|company|services?|group)/i.test(line) && line.length < 100)
-    employerName = candidate ? candidate.trim() : ''
+    employerName = candidate
+      ? candidate.replace(/\s*(ref\s*no|tax\s*no|cert\s*#).*$/i, '').trim()
+      : ''
   }
   if (!employerName) {
-    const candidate = lines.find((line) => line.length > 3 && !/\d/.test(line) && !/tax year|wages|salary|withheld|ein/i.test(line))
+    const candidate = lines.find((line) => line.length > 3 && !/\d/.test(line) && !/tax year|wages|salary|withheld|ein|summary|certificate|note/i.test(line))
     employerName = candidate ? candidate.trim() : ''
   }
 
-  const taxYearMatch = full.match(/\b(20\d{2})\b/)
-  const taxYear = taxYearMatch ? Number(taxYearMatch[1]) : 2025
+  const yearNearLabel = full.match(/(?:yr|year|tax\s*year|taxyear|ending|y\/e)\s*:?\s*(20\d{2})/i)
+  const yearAnywhere = full.match(/\b(20\d{2})\b/)
+  const taxYear = yearNearLabel ? Number(yearNearLabel[1]) : yearAnywhere ? Number(yearAnywhere[1]) : 2025
 
-  const incomeLine = findLine(/wages|salary|total income|compensation|gross income/i)
-  const federalTaxLine = findLine(/federal.*(tax|withheld)|income tax withheld|paye|tax withheld/i)
+  // SARS IRP5 codes: 3601 = gross income, 4102 = PAYE, 4141 = UIF
+  const INCOME_LABEL = /(gross\s+earnings|gross\s+income|total\s+income|total\s+earnings|taxable\s+income|code\s*3601|\(3601\)|wages|salary|compensation|earnings)/i
+  const PAYE_LABEL = /(tax\s+deducted|deducted\s+under\s+paye|paye|income\s+tax\s+withheld|tax\s+withheld|federal.*(?:tax|withheld)|code\s*4102|\(4102\))/i
+
+  const incomeLine = findLine(INCOME_LABEL)
+  let income = amountAfter(incomeLine, INCOME_LABEL) ?? firstAmount(incomeLine)
+  if (income === null) {
+    const cands = allNumbers.filter((n) => n >= 1000 && n <= 99999999)
+    income = cands.length ? Math.max(...cands) : 0
+  }
+
+  const payeLine = findLine(PAYE_LABEL)
+  let paye = amountAfter(payeLine, PAYE_LABEL) ?? firstAmount(payeLine)
+  if (paye === null) {
+    const cands = allNumbers.filter((n) => n > 0 && income > 0 && n < income && n <= income * 0.6)
+    paye = cands.length ? Math.max(...cands) : 0
+  }
+
+  const wageLine = findLine(/wages|salary|compensation/i)
+  const wagesSalary = amountAfter(wageLine, /wages|salary|compensation/i) ?? firstAmount(wageLine) ?? income
   const stateTaxLine = findLine(/state.*(tax|withheld)/i)
+  const stateTaxWithheld = firstAmount(stateTaxLine) ?? 0
   const socialSecurityLine = findLine(/social.*security.*wages?|ssw/i)
+  const socialSecurityWages = firstAmount(socialSecurityLine) ?? income
   const medicareLine = findLine(/medicare.*wages?|medicare/i)
-
-  const reasonableIncome = allNumbers.filter((n) => n >= 100 && n <= 99999999)
-  const income = extractAmountFromLine(incomeLine) ?? reasonableIncome.sort((a, b) => b - a)[0] ?? 0
-  const wagesSalary = extractAmountFromLine(findLine(/wages|salary|compensation|gross income/i)) ?? income
-  const federalTaxWithheld = extractAmountFromLine(federalTaxLine) ?? allNumbers.filter((n) => n > 0 && n < (income || 99999999) && n < 999999 && n < (income || 99999999) * 0.6).sort((a, b) => b - a)[0] ?? 0
-  const stateTaxWithheld = extractAmountFromLine(stateTaxLine) ?? 0
-  const socialSecurityWages = extractAmountFromLine(socialSecurityLine) ?? income
-  const medicareWages = extractAmountFromLine(medicareLine) ?? income
+  const medicareWages = firstAmount(medicareLine) ?? income
 
   return {
     employerName,
@@ -174,7 +208,7 @@ function parseWithRegex(rawText) {
     taxYear,
     income,
     wagesSalary,
-    federalTaxWithheld,
+    federalTaxWithheld: paye,
     stateTaxWithheld,
     socialSecurityWages,
     medicareWages,
