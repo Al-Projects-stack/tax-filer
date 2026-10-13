@@ -72,6 +72,11 @@ const MOCK_EXTRACTED = {
   socialSecurityWages: 450000.00,
   medicareWages: 450000.00,
   taxYear: 2025,
+  retirementContributions: 0,
+  medicalAidContributions: 0,
+  medicalDependants: 0,
+  uifContributions: 0,
+  age: null,
 }
 
 const jobs = {}
@@ -202,6 +207,75 @@ function parseWithRegex(rawText) {
   const medicareLine = findLine(/medicare.*wages?|medicare/i)
   const medicareWages = firstAmount(medicareLine) ?? income
 
+  // ---- Retirement contributions (deductible): pension / provident / RA ----
+  const RETIRE_LABEL = /(pension|provident|retirement\s+annuity|retirement\s+fund|annuity\s+contribution|\bra\b|code\s*400[1367]|\(400[1367]\))/i
+  let retirementContributions = 0
+  for (const line of lines) {
+    if (RETIRE_LABEL.test(line) && !/employer|fringe|benefit/i.test(line)) {
+      const amt = amountAfter(line, RETIRE_LABEL) ?? firstAmount(line)
+      if (amt !== null && amt > 0) retirementContributions += amt
+    }
+  }
+
+  // ---- Medical aid (drives the medical scheme fees tax credit) ----
+  const MEDICAL_LABEL = /(medical\s+(aid|scheme|fees)|scheme\s+fees|code\s*4116|\(4116\))/i
+  let medicalAidContributions = 0
+  for (const line of lines) {
+    if (MEDICAL_LABEL.test(line) && !/employer|fringe|benefit/i.test(line)) {
+      const amt = amountAfter(line, MEDICAL_LABEL) ?? firstAmount(line)
+      if (amt !== null && amt > 0) medicalAidContributions += amt
+    }
+  }
+  const membersMatch = full.match(/(dependants?|dependents?|members|beneficiaries|covered)\b[^:\d]{0,20}:?\s*(\d{1,2})/i)
+  let medicalDependants = 0
+  if (membersMatch) {
+    const n = parseInt(membersMatch[2], 10)
+    const total = /dependant|dependent/i.test(membersMatch[1]) ? 1 + n : n
+    if (total >= 1 && total <= 20) medicalDependants = total
+  }
+
+  // ---- UIF contributions (code 4141): informational only, NOT deductible ----
+  const UIF_LABEL = /(uif|unemployment\s+insurance|code\s*4141|\(4141\))/i
+  const uifLine = findLine(UIF_LABEL)
+  const uifContributions = amountAfter(uifLine, UIF_LABEL) ?? firstAmount(uifLine) ?? 0
+
+  // ---- Age: explicit Age / date-of-birth labels, else SA ID number ----
+  const ageAtFebEnd = (d, m, y, endYear) => {
+    if (!(d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= endYear)) return null
+    const hadBirthday = m < 2 || (m === 2 && d <= 28)
+    return endYear - y - (hadBirthday ? 0 : 1)
+  }
+  let age = null
+  const explicitAge = full.match(/(?:^|[\s:(])age\s*:?\s*(\d{1,3})\b/i)
+  if (explicitAge && +explicitAge[1] <= 120) age = +explicitAge[1]
+  if (age === null) {
+    const dob = full.match(/(?:date\s*of\s*birth|d\.?\s*o\.?\s*b\.?|birth\s*date)\s*:?\s*(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/i)
+    if (dob) {
+      let y = +dob[3]
+      y += y < 100 ? (y > 30 ? 1900 : 2000) : 0
+      age = ageAtFebEnd(+dob[1], +dob[2], y, taxYear)
+    }
+  }
+  if (age === null) {
+    const idMatch = full.match(/\b(\d{13})\b/)
+    if (idMatch) {
+      const id = idMatch[1]
+      let sum = 0
+      let dbl = false
+      for (let i = 11; i >= 0; i--) {
+        let digit = +id[i]
+        if (dbl) { digit *= 2; if (digit > 9) digit -= 9 }
+        sum += digit
+        dbl = !dbl
+      }
+      if ((10 - (sum % 10)) % 10 === +id[12]) {
+        const yy = +id.slice(0, 2)
+        const fullYear = yy > (taxYear % 100) ? 1900 + yy : 2000 + yy
+        age = ageAtFebEnd(+id.slice(4, 6), +id.slice(2, 4), fullYear, taxYear)
+      }
+    }
+  }
+
   return {
     employerName,
     employerEIN,
@@ -212,6 +286,11 @@ function parseWithRegex(rawText) {
     stateTaxWithheld,
     socialSecurityWages,
     medicareWages,
+    retirementContributions,
+    medicalAidContributions,
+    medicalDependants,
+    uifContributions,
+    age,
   }
 }
 
@@ -226,6 +305,11 @@ function mergeWithFallback(extracted) {
     stateTaxWithheld: typeof extracted.stateTaxWithheld === 'number' ? extracted.stateTaxWithheld : MOCK_EXTRACTED.stateTaxWithheld,
     socialSecurityWages: typeof extracted.socialSecurityWages === 'number' ? extracted.socialSecurityWages : MOCK_EXTRACTED.socialSecurityWages,
     medicareWages: typeof extracted.medicareWages === 'number' ? extracted.medicareWages : MOCK_EXTRACTED.medicareWages,
+    retirementContributions: typeof extracted.retirementContributions === 'number' ? extracted.retirementContributions : 0,
+    medicalAidContributions: typeof extracted.medicalAidContributions === 'number' ? extracted.medicalAidContributions : 0,
+    medicalDependants: typeof extracted.medicalDependants === 'number' ? extracted.medicalDependants : 0,
+    uifContributions: typeof extracted.uifContributions === 'number' ? extracted.uifContributions : 0,
+    age: typeof extracted.age === 'number' ? extracted.age : null,
   }
 }
 
@@ -245,12 +329,20 @@ async function structureWithLLM(rawText) {
   "federalTaxWithheld": number,
   "stateTaxWithheld": number,
   "socialSecurityWages": number,
-  "medicareWages": number
+  "medicareWages": number,
+  "retirementContributions": number,
+  "medicalAidContributions": number,
+  "medicalDependants": number,
+  "uifContributions": number,
+  "age": number
 }
 
 Rules:
 - Numbers must be plain numbers — no formatting, no dollar signs, no commas
-- Use 0 for any numeric field not found in the text
+- "retirementContributions" = pension/provident/retirement-annuity contributions (SARS codes 4001/4003/4006)
+- "medicalAidContributions" = medical aid/scheme fees paid; "medicalDependants" = members covered including yourself
+- "uifContributions" = UIF contributions (code 4141); "age" = taxpayer age, or null if not found
+- Use 0 for any numeric field not found in the text (null for age)
 - Use "" for any string field not found
 - Do NOT include markdown fences, explanations, or anything other than the JSON object
 
@@ -369,7 +461,12 @@ async function processExtraction(jobId) {
   }
 }
 
-function calculateSA(income, payeWithheld) {
+const SA_REBATES_2025 = { under65: 17235, over65: 26679, over75: 29824 }
+const SA_MTC_MONTHLY = { firstTwo: 364, extra: 246 }
+const SA_RETIREMENT_RATE = 0.275
+const SA_RETIREMENT_CAP = 350000
+
+function calculateSA(income, payeWithheld, opts = {}) {
   const brackets = [
     { from: 0, to: 237100, rate: 0.18 },
     { from: 237101, to: 370500, rate: 0.26 },
@@ -380,12 +477,22 @@ function calculateSA(income, payeWithheld) {
     { from: 1817001, to: Infinity, rate: 0.45 },
   ]
 
+  // Retirement contributions are deductible: lesser of contributions,
+  // 27.5% of income, and R350 000 (SARS s11F limit).
+  const retirementPaid = Math.max(0, Number(opts.retirementContributions) || 0)
+  const retirementDeduction = Math.min(
+    retirementPaid,
+    +((income * SA_RETIREMENT_RATE).toFixed(2)),
+    SA_RETIREMENT_CAP
+  )
+  const taxableIncome = Math.max(0, +(income - retirementDeduction).toFixed(2))
+
   let grossTax = 0
   const breakdown = []
 
   for (const b of brackets) {
-    if (income <= b.from) break
-    const taxableInBracket = Math.min(income, b.to) - b.from
+    if (taxableIncome <= b.from) break
+    const taxableInBracket = Math.min(taxableIncome, b.to) - b.from
     const taxAmount = +(taxableInBracket * b.rate).toFixed(2)
     grossTax += taxAmount
     breakdown.push({
@@ -397,19 +504,61 @@ function calculateSA(income, payeWithheld) {
   }
 
   grossTax = +grossTax.toFixed(2)
-  const primaryRebate = 17235
-  const taxAfterRebate = +Math.max(0, grossTax - primaryRebate).toFixed(2)
-  const refund = +(payeWithheld - taxAfterRebate).toFixed(2)
+
+  // Rebate tier by age (SARS 2025/2026).
+  const age = Number(opts.age)
+  let rebate = SA_REBATES_2025.under65
+  let rebateLabel = 'Primary Rebate (under 65)'
+  if (Number.isFinite(age) && age >= 65) {
+    if (age >= 75) {
+      rebate = SA_REBATES_2025.over75
+      rebateLabel = 'Rebate (75 and over)'
+    } else {
+      rebate = SA_REBATES_2025.over65
+      rebateLabel = 'Rebate (65 and over)'
+    }
+  }
+
+  // Medical scheme fees tax credit (MTC 2025/26 rates). Applies when
+  // medical aid contributions were paid; members includes the taxpayer.
+  const medicalPaid = Math.max(0, Number(opts.medicalAidContributions) || 0)
+  const members = Math.min(20, Math.max(1, Math.floor(Number(opts.medicalDependants) || 1)))
+  const medicalCredit = medicalPaid > 0
+    ? 12 * (SA_MTC_MONTHLY.firstTwo + (members >= 2 ? SA_MTC_MONTHLY.firstTwo : 0) + Math.max(0, members - 2) * SA_MTC_MONTHLY.extra)
+    : 0
+
+  // UIF is shown for transparency but is NOT deductible from income tax.
+  const uif = Math.max(0, Number(opts.uifContributions) || 0)
+
+  const taxAfterRebate = +Math.max(0, grossTax - rebate).toFixed(2)
+  const totalTax = +Math.max(0, taxAfterRebate - medicalCredit).toFixed(2)
+  const refund = +(payeWithheld - totalTax).toFixed(2)
 
   return {
     income,
     payeWithheld,
     totalWithheld: payeWithheld,
-    totalTax: taxAfterRebate,
+    retirementContributions: retirementPaid,
+    retirementDeduction,
+    taxableIncome,
     grossTax,
-    primaryRebate,
+    primaryRebate: rebate,
+    rebate,
+    rebateLabel,
+    medicalAidContributions: medicalPaid,
+    medicalDependants: members,
+    medicalCredit,
+    uifContributions: uif,
+    age: Number.isFinite(age) && age > 0 ? age : null,
+    totalTax,
     refund,
     breakdown,
+    deductions: retirementDeduction > 0
+      ? [{ label: 'Retirement contributions (deductible)', amount: retirementDeduction }]
+      : [],
+    credits: medicalCredit > 0
+      ? [{ label: `Medical scheme fees tax credit (${members} member${members === 1 ? '' : 's'})`, amount: medicalCredit }]
+      : [],
     isRefund: refund >= 0,
     isOwed: refund < 0,
     currency: 'ZAR',
@@ -497,6 +646,11 @@ app.post('/api/calculate', (req, res) => {
   const data = req.body || {}
   const income = Number(data.income)
   const paye = Number(data.federalTaxWithheld ?? data.payeWithheld ?? 0)
+  const retirementContributions = Number(data.retirementContributions ?? 0)
+  const medicalAidContributions = Number(data.medicalAidContributions ?? 0)
+  const medicalDependants = Number(data.medicalDependants ?? 0)
+  const uifContributions = Number(data.uifContributions ?? 0)
+  const age = data.age === null || data.age === undefined || data.age === '' ? undefined : Number(data.age)
 
   if (Number.isNaN(income)) {
     return res.status(400).json({ error: 'Income must be a valid number.' })
@@ -504,8 +658,18 @@ app.post('/api/calculate', (req, res) => {
   if (Number.isNaN(paye)) {
     return res.status(400).json({ error: 'Federal tax withheld must be a valid number.' })
   }
+  if ([retirementContributions, medicalAidContributions, medicalDependants, uifContributions].some(Number.isNaN)
+    || (age !== undefined && Number.isNaN(age))) {
+    return res.status(400).json({ error: 'Deduction fields must be valid numbers.' })
+  }
 
-  res.json(calculateSA(income, paye))
+  res.json(calculateSA(income, paye, {
+    retirementContributions,
+    medicalAidContributions,
+    medicalDependants,
+    uifContributions,
+    age,
+  }))
 })
 
 app.post('/api/file', (req, res) => {
@@ -528,13 +692,21 @@ app.post('/api/file', (req, res) => {
     filedAt: new Date().toISOString(),
     employerName: String(req.body.employerName || ''),
     income,
+    taxableIncome: Number(calc.taxableIncome ?? calc.income) || 0,
+    retirementDeduction: Number(calc.retirementDeduction) || 0,
     totalTax,
     payeWithheld,
     refund,
     isRefund: calc.isRefund ?? true,
     breakdown: Array.isArray(calc.breakdown) ? calc.breakdown : [],
+    deductions: Array.isArray(calc.deductions) ? calc.deductions : [],
+    credits: Array.isArray(calc.credits) ? calc.credits : [],
     grossTax: Number(calc.grossTax) || 0,
-    primaryRebate: Number(calc.primaryRebate) || 0,
+    primaryRebate: Number(calc.rebate ?? calc.primaryRebate) || 0,
+    rebateLabel: String(calc.rebateLabel || 'Primary Rebate (under 65)'),
+    medicalCredit: Number(calc.medicalCredit) || 0,
+    uifContributions: Number(calc.uifContributions) || 0,
+    age: typeof calc.age === 'number' ? calc.age : null,
   }
 
   filingHistory.unshift(record)
@@ -604,7 +776,14 @@ app.post('/api/receipt', async (req, res) => {
     y -= 8
     section('Income & Tax')
     row('Gross Income', fmt(d.income || 0))
+    if (d.retirementDeduction > 0) {
+      row('Less: Retirement Deduction', '- ' + fmt(d.retirementDeduction))
+      row('Taxable Income', fmt(d.taxableIncome ?? d.income))
+    }
     row('PAYE Withheld', fmt(d.payeWithheld || 0))
+    if (d.uifContributions > 0) {
+      row('UIF Contributions (info only)', fmt(d.uifContributions))
+    }
 
     y -= 8
     section('Bracket Breakdown')
@@ -616,7 +795,10 @@ app.post('/api/receipt', async (req, res) => {
       y -= 14
     }
     row('Gross Tax Liability', fmt(d.grossTax || 0))
-    row('Primary Rebate', '- ' + fmt(d.primaryRebate || 0))
+    row(d.rebateLabel || 'Primary Rebate', '- ' + fmt(d.rebate ?? d.primaryRebate ?? 0))
+    if (d.medicalCredit > 0) {
+      row('Medical Scheme Tax Credit', '- ' + fmt(d.medicalCredit))
+    }
     row('Tax After Rebate', fmt(d.totalTax || 0))
 
     y -= 8

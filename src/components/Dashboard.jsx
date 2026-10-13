@@ -158,6 +158,12 @@ export default function Dashboard({ onNewFiling }) {
                     <span className="text-gray-400 dark:text-gray-500">Gross Income</span>
                     <p className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(r.income)}</p>
                   </div>
+                  {(r.retirementDeduction > 0) && (
+                    <div>
+                      <span className="text-gray-400 dark:text-gray-500">Retirement Deduction</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(r.retirementDeduction)}</p>
+                    </div>
+                  )}
                   <div>
                     <span className="text-gray-400 dark:text-gray-500">PAYE Withheld</span>
                     <p className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(r.payeWithheld)}</p>
@@ -167,9 +173,15 @@ export default function Dashboard({ onNewFiling }) {
                     <p className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(r.grossTax)}</p>
                   </div>
                   <div>
-                    <span className="text-gray-400 dark:text-gray-500">Primary Rebate</span>
+                    <span className="text-gray-400 dark:text-gray-500">{r.rebateLabel || 'Primary Rebate'}</span>
                     <p className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(r.primaryRebate)}</p>
                   </div>
+                  {(r.medicalCredit > 0) && (
+                    <div>
+                      <span className="text-gray-400 dark:text-gray-500">Medical Tax Credit</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(r.medicalCredit)}</p>
+                    </div>
+                  )}
                   <div>
                     <span className="text-gray-400 dark:text-gray-500">Tax After Rebate</span>
                     <p className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(r.totalTax)}</p>

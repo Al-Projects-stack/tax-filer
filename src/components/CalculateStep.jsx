@@ -99,6 +99,18 @@ export default function CalculateStep({ data, onComplete }) {
             <span className="text-gray-500 dark:text-gray-400">Gross Income</span>
             <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calc.income)}</span>
           </div>
+          {(calc.retirementDeduction > 0) && (
+            <>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Less: Retirement Contributions</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(calc.retirementDeduction)}</span>
+              </div>
+              <div className="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-700 font-semibold">
+                <span className="text-gray-800 dark:text-gray-200">Taxable Income</span>
+                <span className="text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calc.taxableIncome ?? calc.income)}</span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-t border-b border-gray-200 dark:border-gray-700">
@@ -126,9 +138,15 @@ export default function CalculateStep({ data, onComplete }) {
         </div>
         <div className="px-6 py-4 space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">Primary Rebate (under 65)</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(calc.primaryRebate)}</span>
+            <span className="text-gray-500 dark:text-gray-400">{calc.rebateLabel || 'Primary Rebate (under 65)'}</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(calc.rebate ?? calc.primaryRebate)}</span>
           </div>
+          {(calc.medicalCredit > 0) && (
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">Medical Scheme Tax Credit</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(calc.medicalCredit)}</span>
+            </div>
+          )}
           <div className="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-700 font-semibold">
             <span className="text-gray-800 dark:text-gray-200">Tax After Rebate</span>
             <span className="text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calc.totalTax)}</span>
@@ -143,6 +161,12 @@ export default function CalculateStep({ data, onComplete }) {
             <span className="text-gray-500 dark:text-gray-400">PAYE Already Withheld</span>
             <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calc.payeWithheld)}</span>
           </div>
+          {(calc.uifContributions > 0) && (
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">UIF Contributions (not deductible)</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calc.uifContributions)}</span>
+            </div>
+          )}
         </div>
 
         <div className={`px-6 py-5 border-t-2 ${calc.isRefund ? 'border-green-500 dark:border-green-700 bg-green-50 dark:bg-green-900/20' : 'border-red-500 dark:border-red-700 bg-red-50 dark:bg-red-900/20'}`}>

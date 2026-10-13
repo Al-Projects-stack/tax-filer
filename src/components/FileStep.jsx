@@ -24,9 +24,14 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
           employerName: extractedData?.employerName || '',
           taxYear: calculation.taxYear || '2025/2026',
           income: calculation.income,
+          taxableIncome: calculation.taxableIncome,
+          retirementDeduction: calculation.retirementDeduction,
           payeWithheld: calculation.payeWithheld,
+          uifContributions: calculation.uifContributions,
           grossTax: calculation.grossTax,
-          primaryRebate: calculation.primaryRebate,
+          primaryRebate: calculation.rebate ?? calculation.primaryRebate,
+          rebateLabel: calculation.rebateLabel,
+          medicalCredit: calculation.medicalCredit,
           totalTax: calculation.totalTax,
           refund: calculation.refund,
           isRefund: calculation.isRefund,
@@ -97,6 +102,24 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
             <span className="text-gray-500 dark:text-gray-400">Total Income</span>
             <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calculation.income)}</span>
           </div>
+          {(calculation.retirementDeduction > 0) && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Less: Retirement Deduction</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(calculation.retirementDeduction)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Taxable Income</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calculation.taxableIncome ?? calculation.income)}</span>
+              </div>
+            </>
+          )}
+          {(calculation.medicalCredit > 0) && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Less: Medical Tax Credit</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">- {fmt(calculation.medicalCredit)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-gray-500 dark:text-gray-400">Total Tax</span>
             <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(calculation.totalTax)}</span>

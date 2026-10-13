@@ -10,12 +10,19 @@ const INITIAL_FORM = {
   stateTaxWithheld: '',
   socialSecurityWages: '',
   medicareWages: '',
+  retirementContributions: '',
+  medicalAidContributions: '',
+  medicalDependants: '',
+  uifContributions: '',
+  age: '',
 }
 
 const NUMERIC_FIELDS = new Set([
   'taxYear', 'income', 'wagesSalary',
   'federalTaxWithheld', 'stateTaxWithheld',
   'socialSecurityWages', 'medicareWages',
+  'retirementContributions', 'medicalAidContributions',
+  'medicalDependants', 'uifContributions', 'age',
 ])
 
 const FIELD_LABELS = {
@@ -28,6 +35,11 @@ const FIELD_LABELS = {
   stateTaxWithheld: 'State Tax Withheld (Box 17)',
   socialSecurityWages: 'Social Security Wages (Box 3)',
   medicareWages: 'Medicare Wages (Box 5)',
+  retirementContributions: 'Retirement / Pension Contributions (deductible)',
+  medicalAidContributions: 'Medical Aid Contributions',
+  medicalDependants: 'Medical Aid Members (incl. yourself)',
+  uifContributions: 'UIF Contributions (info only)',
+  age: 'Age',
 }
 
 function parseNumberValue(value) {
@@ -155,6 +167,11 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
             stateTaxWithheld: formatExtractedValue(r.stateTaxWithheld ?? ''),
             socialSecurityWages: formatExtractedValue(r.socialSecurityWages ?? ''),
             medicareWages: formatExtractedValue(r.medicareWages ?? ''),
+            retirementContributions: formatExtractedValue(r.retirementContributions ?? ''),
+            medicalAidContributions: formatExtractedValue(r.medicalAidContributions ?? ''),
+            medicalDependants: formatExtractedValue(r.medicalDependants ?? ''),
+            uifContributions: formatExtractedValue(r.uifContributions ?? ''),
+            age: formatExtractedValue(r.age ?? ''),
           })
           if (r._warning) setWarning(r._warning)
           setPhase('ready')
