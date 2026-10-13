@@ -138,10 +138,17 @@ function parseWithRegex(rawText) {
     return toNumber(bare?.[1])
   }
 
+  // Prefer an R/$-prefixed amount anywhere on the line (skips Box/code
+  // numbers); otherwise take the largest bare number on the line.
   const firstAmount = (line) => {
     if (!line) return null
-    const m = line.match(/(?:R|ZAR|\$)\s*(-?[\d,]+(?:\.\d+)?)|(-?[\d,]+(?:\.\d+)?)/i)
-    return toNumber(m?.[1] ?? m?.[2])
+    const prefixed = line.match(/(?:R|ZAR|\$)\s*(-?[\d,]+(?:\.\d+)?)/i)
+    if (prefixed) return toNumber(prefixed[1])
+    const bare = [...line.matchAll(/(-?[\d,]+(?:\.\d+)?)/g)]
+      .map((m) => toNumber(m[1]))
+      .filter((n) => n !== null)
+    if (!bare.length) return null
+    return Math.max(...bare)
   }
 
   const employerEINMatch = full.match(/\b\d{2}-\d{7}\b/)
@@ -172,7 +179,9 @@ function parseWithRegex(rawText) {
       : ''
   }
   if (!employerName) {
-    const candidate = lines.find((line) => line.length > 3 && !/\d/.test(line) && !/tax year|wages|salary|withheld|ein|summary|certificate|note/i.test(line))
+    const isHeading = (line) => line === line.toUpperCase()
+      && /cert|statement|summary|payslip|invoice|receipt|notice|assessment|return|slip|form|copy/i.test(line)
+    const candidate = lines.find((line) => line.length > 3 && !/\d/.test(line) && !isHeading(line) && !/tax year|wages|salary|withheld|ein|summary|certificate|note/i.test(line))
     employerName = candidate ? candidate.trim() : ''
   }
 
@@ -180,9 +189,10 @@ function parseWithRegex(rawText) {
   const yearAnywhere = full.match(/\b(20\d{2})\b/)
   const taxYear = yearNearLabel ? Number(yearNearLabel[1]) : yearAnywhere ? Number(yearAnywhere[1]) : 2025
 
-  // SARS IRP5 codes: 3601 = gross income, 4102 = PAYE, 4141 = UIF
-  const INCOME_LABEL = /(gross\s+earnings|gross\s+income|total\s+income|total\s+earnings|taxable\s+income|code\s*3601|\(3601\)|wages|salary|compensation|earnings)/i
-  const PAYE_LABEL = /(tax\s+deducted|deducted\s+under\s+paye|paye|income\s+tax\s+withheld|tax\s+withheld|federal.*(?:tax|withheld)|code\s*4102|\(4102\))/i
+  // SARS IRP5 codes: 3601 = gross income, 4102 = PAYE, 4141 = UIF.
+  // Also covers payslip wording (basic salary, gross pay) and W-2 boxes.
+  const INCOME_LABEL = /(gross\s+earnings|gross\s+income|gross\s+pay|basic\s+salary|total\s+income|total\s+earnings|taxable\s+income|code\s*3601|\(3601\)|box\s*1\b|wages|salary|compensation|earnings)/i
+  const PAYE_LABEL = /(tax\s+deducted|deducted\s+under\s+paye|paye\s+paid|paye|income\s+tax\s+withheld|tax\s+withheld|tax\s+paid|federal.*(?:tax|withheld)|code\s*4102|\(4102\)|box\s*2\b)/i
 
   const incomeLine = findLine(INCOME_LABEL)
   let income = amountAfter(incomeLine, INCOME_LABEL) ?? firstAmount(incomeLine)
@@ -294,6 +304,25 @@ function parseWithRegex(rawText) {
   }
 }
 
+// Monthly payslips state monthly figures. Annualise them (×12) so the
+// calculation works on annual income. Only triggers on explicit monthly
+// markers and never when the doc mentions annual/YTD figures.
+function isMonthlyPayDoc(rawText) {
+  if (/(ytd|year.to.date|annual|yearly|per\s+annum|\bp\/a\b|full\s*year)/i.test(rawText)) return false
+  return /(\bmonthly\b|\bper\s+month\b|\bp\/m\b)/i.test(rawText)
+}
+
+function annualiseParsed(parsed) {
+  for (const key of ['income', 'wagesSalary', 'federalTaxWithheld', 'stateTaxWithheld',
+    'socialSecurityWages', 'medicareWages', 'retirementContributions',
+    'medicalAidContributions', 'uifContributions']) {
+    if (typeof parsed[key] === 'number' && parsed[key] > 0) {
+      parsed[key] = +(parsed[key] * 12).toFixed(2)
+    }
+  }
+  return parsed
+}
+
 function mergeWithFallback(extracted) {
   return {
     employerName: typeof extracted.employerName === 'string' ? extracted.employerName : MOCK_EXTRACTED.employerName,
@@ -320,7 +349,7 @@ async function structureWithLLM(rawText) {
   })
   const model = process.env.LLM_MODEL || 'gpt-4o-mini'
 
-  const prompt = `Extract tax document (W-2) fields from the raw text below. Return ONLY valid JSON with these exact fields:
+  const prompt = `Extract income/tax document fields from the raw text below. The document may be a South African IRP5 or payslip, a US W-2, or any similar earnings/tax certificate. Return ONLY valid JSON with these exact fields:
 {
   "employerName": "string",
   "employerEIN": "string",
@@ -388,8 +417,8 @@ async function processExtraction(jobId) {
 
     if (isPdf) {
       addStage(job, 'Reading PDF document')
+      const parser = new PDFParse({ data: fileInfo.buffer })
       try {
-        const parser = new PDFParse({ data: fileInfo.buffer })
         const textResult = await parser.getText({ pageJoiner: '\n' })
         rawText = (typeof textResult === 'string' ? textResult : textResult?.text || '').trim()
       } catch (pdfErr) {
@@ -398,9 +427,56 @@ async function processExtraction(jobId) {
       completeStage(job)
 
       if (rawText.length < 50) {
-        addStage(job, 'Could not extract enough text from the PDF')
-        rawText = rawText.trim()
+        addStage(job, 'Running OCR on scanned document')
+        try {
+          const worker = await Tesseract.createWorker('eng')
+          try {
+            // 1. OCR embedded scan images directly (exact source pixels).
+            try {
+              const imgs = await parser.getImage({ imageBuffer: true })
+              let seen = 0
+              for (const pg of imgs.pages || []) {
+                for (const img of pg.images || []) {
+                  if (seen >= 4 || rawText.trim().length >= 50) break
+                  if (!img.data || !img.data.length) continue
+                  seen++
+                  const { data } = await worker.recognize(Buffer.from(img.data))
+                  rawText += '\n' + (data.text || '')
+                }
+                if (rawText.trim().length >= 50) break
+              }
+            } catch (imgErr) {
+              console.error('Scan image extraction failed:', imgErr)
+            }
+            // 2. Fall back to rendering pages to images.
+            if (rawText.trim().length < 50) {
+              try {
+                const shots = await parser.getScreenshot({ imageBuffer: true, scale: 2 })
+                let done = 0
+                for (const pg of shots.pages || []) {
+                  if (!pg.data || !pg.data.length || done >= 2) break
+                  const { data } = await worker.recognize(Buffer.from(pg.data))
+                  rawText += '\n' + (data.text || '')
+                  done++
+                  if (rawText.trim().length >= 50) break
+                }
+              } catch (shotErr) {
+                console.error('Scan render failed:', shotErr)
+              }
+            }
+          } finally {
+            await worker.terminate()
+          }
+          rawText = rawText.trim()
+        } catch (ocrErr) {
+          console.error('OCR failed for PDF:', ocrErr)
+          addStage(job, `OCR failed: ${(ocrErr && ocrErr.message) || 'unknown error'}`)
+          completeStage(job)
+        }
+        try { await parser.destroy() } catch {}
         completeStage(job)
+      } else {
+        try { await parser.destroy() } catch {}
       }
     } else if (isImage) {
       addStage(job, 'Running OCR on image')
@@ -424,6 +500,8 @@ async function processExtraction(jobId) {
   try {
     let result
     const parsed = parseWithRegex(rawText)
+    const monthly = isMonthlyPayDoc(rawText)
+    if (monthly) annualiseParsed(parsed)
 
     if (rawText.length >= 10) {
       const llmAvailable = process.env.LLM_API_KEY
@@ -433,6 +511,7 @@ async function processExtraction(jobId) {
         try {
           const extracted = await structureWithLLM(rawText)
           result = mergeWithFallback(extracted)
+          if (monthly) annualiseParsed(result)
         } catch (llmErr) {
           console.error('LLM structuring failed:', llmErr)
           addStage(job, 'Falling back to text parsing')
@@ -447,6 +526,8 @@ async function processExtraction(jobId) {
 
       if (!result.income || result.income < 1000) {
         result._warning = 'Could not find income figures in the document. Please fill in fields manually.'
+      } else if (monthly) {
+        result._warning = 'Monthly figures were annualised (x12). Please verify.'
       }
     } else {
       result = { ...MOCK_EXTRACTED, _warning: 'Could not read any text from the document. Please fill in fields manually.' }
