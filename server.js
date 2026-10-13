@@ -125,6 +125,18 @@ function parseWithRegex(rawText) {
     return Number.isFinite(parsed) ? parsed : null
   }
 
+  // Largest bare number with at most 6 digits. Reference/cert/tax numbers
+  // (7+ digits) can never win, so a merged "Ref no 7348520238" can't
+  // produce billion-rand ghost figures. Larger real amounts are still
+  // caught by the R-prefix rules and the bounded heuristics below.
+  const bareMax = (text) => {
+    const bare = [...text.matchAll(/(-?[\d,]+(?:\.\d+)?)/g)]
+      .map((m) => toNumber(m[1]))
+      .filter((n) => n !== null && String(Math.trunc(Math.abs(n))).length <= 6)
+    if (!bare.length) return null
+    return Math.max(...bare)
+  }
+
   // Amount appearing AFTER a label on the same line. Prefers R-prefixed
   // amounts so SARS codes like 3601/4102/4141 are never mistaken for money.
   const amountAfter = (line, labelPattern) => {
@@ -134,21 +146,16 @@ function parseWithRegex(rawText) {
     const after = line.slice((m.index ?? 0) + m[0].length)
     const prefixed = after.match(/(?:R|ZAR|\$)\s*(-?[\d,]+(?:\.\d+)?)/i)
     if (prefixed) return toNumber(prefixed[1])
-    const bare = after.match(/(-?[\d,]+(?:\.\d+)?)/)
-    return toNumber(bare?.[1])
+    return bareMax(after)
   }
 
   // Prefer an R/$-prefixed amount anywhere on the line (skips Box/code
-  // numbers); otherwise take the largest bare number on the line.
+  // numbers); otherwise take the largest small bare number on the line.
   const firstAmount = (line) => {
     if (!line) return null
     const prefixed = line.match(/(?:R|ZAR|\$)\s*(-?[\d,]+(?:\.\d+)?)/i)
     if (prefixed) return toNumber(prefixed[1])
-    const bare = [...line.matchAll(/(-?[\d,]+(?:\.\d+)?)/g)]
-      .map((m) => toNumber(m[1]))
-      .filter((n) => n !== null)
-    if (!bare.length) return null
-    return Math.max(...bare)
+    return bareMax(line)
   }
 
   const employerEINMatch = full.match(/\b\d{2}-\d{7}\b/)
@@ -528,6 +535,11 @@ async function processExtraction(jobId) {
         result._warning = 'Could not find income figures in the document. Please fill in fields manually.'
       } else if (monthly) {
         result._warning = 'Monthly figures were annualised (x12). Please verify.'
+      }
+      // PAYE withheld can never exceed gross income — flag it loudly instead
+      // of showing a billion-rand refund.
+      if (result.income > 0 && result.federalTaxWithheld > result.income) {
+        result._warning = 'The PAYE figure looks wrong (higher than income). Please correct it before continuing.'
       }
     } else {
       result = { ...MOCK_EXTRACTED, _warning: 'Could not read any text from the document. Please fill in fields manually.' }
