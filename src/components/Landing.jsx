@@ -78,6 +78,72 @@ function BracketMock() {
   )
 }
 
+function CountUp({ to, suffix = '', duration = 1200 }) {
+  const ref = useRef(null)
+  const started = useRef(false)
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true
+          const t0 = performance.now()
+          const tick = (t) => {
+            const p = Math.min(1, (t - t0) / duration)
+            setVal(to * (1 - Math.pow(1 - p, 3)))
+            if (p < 1) requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.4 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [to, duration])
+  return (
+    <span ref={ref} className="tabular-nums">
+      {Math.round(val)}{suffix}
+    </span>
+  )
+}
+
+function HistoryMock() {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm max-w-sm mx-auto w-full space-y-3">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm">
+        <div>
+          <p className="text-gray-400 dark:text-gray-500 text-xs">12 Aug 2025</p>
+          <p className="font-medium text-gray-900 dark:text-gray-100">Sewandgrow (Pty) Ltd</p>
+        </div>
+        <p className="font-semibold text-green-600 dark:text-green-400 tabular-nums">R 41,362.48</p>
+      </div>
+      <div className="px-4 py-3 border border-gray-100 dark:border-gray-700 rounded-xl text-xs space-y-1.5">
+        <div className="flex justify-between">
+          <span className="text-gray-400 dark:text-gray-500">Reference</span>
+          <span className="font-mono font-medium text-gray-900 dark:text-gray-100">TAX-8X4K2PQR</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400 dark:text-gray-500">Gross Income</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">R 800,308.00</span>
+        </div>
+        <div className="flex justify-between items-center pt-1">
+          <span className="text-gray-400 dark:text-gray-500">Kept forever, deletable</span>
+          <span className="inline-flex items-center gap-1 text-red-500 dark:text-red-400 font-medium">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ReceiptMock() {
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm max-w-sm mx-auto w-full">
@@ -125,10 +191,61 @@ const PILLARS = [
 const DOC_TYPES = ['IRP5', 'Payslip', 'W-2', 'Scanned PDF', 'Photos']
 
 const STATS = [
-  ['7', 'SARS brackets computed'],
-  ['5', 'Document types accepted'],
-  ['4', 'Steps from upload to filed'],
-  ['100%', 'Editable before you file'],
+  [7, '', 'SARS brackets computed'],
+  [5, '', 'Document types accepted'],
+  [4, '', 'Steps from upload to filed'],
+  [100, '%', 'Editable before you file'],
+]
+
+const MADE_FOR = [
+  'Salaried employees',
+  'Payslip earners',
+  'Pensioners 65+',
+  'W-2 holders',
+  'Anyone with a shoebox of scans',
+]
+
+const EXTRAS = [
+  {
+    title: 'Dark mode',
+    body: 'Easy on the eyes at midnight before the deadline. Remembers your choice.',
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />,
+  },
+  {
+    title: 'Document preview',
+    body: 'See your upload — PDF or photo — right inside the upload box before it processes.',
+    icon: (
+      <>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </>
+    ),
+  },
+  {
+    title: 'Editable everything',
+    body: 'Every extracted field can be corrected by hand. Nothing files without your say-so.',
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />,
+  },
+  {
+    title: 'Monthly payslips ×12',
+    body: 'Monthly figures are spotted and annualised automatically — with a nudge to verify.',
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
+  },
+  {
+    title: 'Scan & photo OCR',
+    body: 'Paper scans and phone photos become structured data. No retyping, ever.',
+    icon: (
+      <>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+      </>
+    ),
+  },
+  {
+    title: 'PDF receipts',
+    body: 'Every filing downloads as a professional receipt with reference number and breakdown.',
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
+  },
 ]
 
 const SARS_FACTS = [
@@ -217,6 +334,16 @@ export default function Landing({ onStart }) {
             </Reveal>
           ))}
         </div>
+        <Reveal delay={120}>
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-8">
+            <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mr-1">Made for</span>
+            {MADE_FOR.map((m) => (
+              <span key={m} className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1.5">
+                {m}
+              </span>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {/* Alternating features */}
@@ -256,15 +383,54 @@ export default function Landing({ onStart }) {
             <ReceiptMock />
           </div>
         </Reveal>
+        <Reveal>
+          <div className="grid sm:grid-cols-2 gap-8 items-center">
+            <div className="sm:order-2">
+              <h3 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">Every filing, on record.</h3>
+              <p className="text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                Your history dashboard keeps every return with its full bracket breakdown and reference number. Compare years, re-download receipts, or delete what you don&apos;t need.
+              </p>
+            </div>
+            <div className="sm:order-1">
+              <HistoryMock />
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* Everything else */}
+      <section>
+        <Reveal className="text-center">
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+            And everything else you&apos;d expect.
+          </h2>
+        </Reveal>
+        <div className="grid sm:grid-cols-3 gap-4 mt-8">
+          {EXTRAS.map((x, i) => (
+            <Reveal key={x.title} delay={(i % 3) * 110}>
+              <div className="h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                    {x.icon}
+                  </svg>
+                </div>
+                <h3 className="font-heading font-semibold text-gray-900 dark:text-gray-100 mt-3">{x.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{x.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </section>
 
       {/* Stats band */}
       <Reveal>
         <section className="bg-gray-900 dark:bg-gray-900 border-y border-gray-900 dark:border-gray-800 rounded-3xl px-6 py-10 sm:py-12">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-            {STATS.map(([v, l]) => (
+            {STATS.map(([to, suffix, l]) => (
               <div key={l}>
-                <p className="text-3xl sm:text-4xl font-heading font-bold text-white tabular-nums">{v}</p>
+                <p className="text-3xl sm:text-4xl font-heading font-bold text-white">
+                  <CountUp to={to} suffix={suffix} />
+                </p>
                 <p className="text-sm text-gray-400 mt-1">{l}</p>
               </div>
             ))}
