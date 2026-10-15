@@ -1,0 +1,327 @@
+import { useState, useEffect, useRef } from 'react'
+
+function Reveal({ children, delay = 0, className = '' }) {
+  const ref = useRef(null)
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShown(true)
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.12 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return (
+    <div
+      ref={ref}
+      className={`${shown ? 'anim-fade-up' : 'opacity-0'} ${className}`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function ExtractMock() {
+  return (
+    <div className="grid sm:grid-cols-[1fr_auto_1fr] gap-4 items-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 font-mono text-[11px] leading-5 text-gray-600 dark:text-gray-400">
+        <p>Gross earnings (3601)</p>
+        <p className="font-bold text-gray-900 dark:text-gray-100">R 800,308</p>
+        <p className="mt-2">Tax deducted (4102)</p>
+        <p className="font-bold text-gray-900 dark:text-gray-100">R 214,241.28</p>
+      </div>
+      <div className="mx-auto w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 anim-float">
+        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 6l6 6-6 6M5 12h14" />
+        </svg>
+      </div>
+      <div className="space-y-2 text-sm">
+        {[
+          ['Income', 'R 800,308.00'],
+          ['PAYE withheld', 'R 214,241.28'],
+          ['UIF (info)', 'R 2,125.44'],
+        ].map(([k, v]) => (
+          <div key={k} className="flex justify-between gap-3 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg px-3 py-2">
+            <span className="text-green-700 dark:text-green-300">{k}</span>
+            <span className="font-semibold text-green-800 dark:text-green-200 tabular-nums">{v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function BracketMock() {
+  const bars = [
+    ['18%', 16], ['26%', 24], ['31%', 32], ['36%', 42], ['39%', 54], ['41%', 68], ['45%', 88],
+  ]
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm space-y-3">
+      <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">SARS 2025/2026 — 7 brackets</p>
+      {bars.map(([rate, w], i) => (
+        <div key={rate} className="flex items-center gap-3 anim-fade-up" style={{ animationDelay: `${i * 70}ms` }}>
+          <span className="w-9 text-xs font-bold text-blue-600 dark:text-blue-400 tabular-nums">{rate}</span>
+          <div className="flex-1 h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-3 bg-blue-600 rounded-full" style={{ width: `${w}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ReceiptMock() {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm max-w-sm mx-auto w-full">
+      <p className="font-heading font-bold text-blue-600 dark:text-blue-400 tracking-tight">RETURN</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Tax Filing Summary</p>
+      <div className="mt-4 space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-500 dark:text-gray-400">Reference</span>
+          <span className="font-mono font-bold text-gray-900 dark:text-gray-100 text-xs">TAX-8X4K2PQR</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500 dark:text-gray-400">Tax After Rebate</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">R 172,878.80</span>
+        </div>
+        <div className="flex justify-between pt-2 border-t border-green-200 dark:border-green-800">
+          <span className="font-semibold text-green-700 dark:text-green-400">Refund</span>
+          <span className="font-extrabold text-green-600 dark:text-green-400 tabular-nums">R 41,362.48</span>
+        </div>
+      </div>
+      <div className="mt-4 w-full py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold text-center">
+        Download Receipt
+      </div>
+    </div>
+  )
+}
+
+const PILLARS = [
+  {
+    title: 'Upload anything',
+    body: 'IRP5s, payslips, W-2s, scanned PDFs, even photos. If it has numbers on it, Return can read it.',
+    icon: 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5',
+  },
+  {
+    title: 'We read everything',
+    body: 'PDF text, OCR on scans, monthly payslips annualised, retirement, medical aid, UIF and age-based rebates picked up automatically.',
+    icon: 'M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z',
+  },
+  {
+    title: 'File with confidence',
+    body: 'Every figure is editable before you calculate, every bracket itemised, and every filing saved with a downloadable receipt.',
+    icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  },
+]
+
+const DOC_TYPES = ['IRP5', 'Payslip', 'W-2', 'Scanned PDF', 'Photos']
+
+const STATS = [
+  ['7', 'SARS brackets computed'],
+  ['5', 'Document types accepted'],
+  ['4', 'Steps from upload to filed'],
+  ['100%', 'Editable before you file'],
+]
+
+const SARS_FACTS = [
+  ['45%', 'Top rate above R1.817m'],
+  ['R17,235', 'Primary rebate under 65'],
+  ['R364 / R246', 'Medical credit per month'],
+]
+
+export default function Landing({ onStart }) {
+  return (
+    <div className="space-y-20 sm:space-y-28 pb-4">
+      {/* Hero */}
+      <section className="text-center pt-10 sm:pt-16">
+        <div className="anim-fade-up inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-full px-4 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
+          <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          SARS 2025/2026 tax tables built in
+        </div>
+        <h1 className="anim-fade-up text-4xl sm:text-6xl font-heading font-bold tracking-tight text-gray-900 dark:text-gray-100 mt-6 leading-[1.05]" style={{ animationDelay: '90ms' }}>
+          Turn tax documents<br />into filed returns.
+        </h1>
+        <p className="anim-fade-up text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto mt-5" style={{ animationDelay: '180ms' }}>
+          Upload any IRP5, payslip or scan. Return reads the figures, runs the real SARS calculation, and files your return in minutes.
+        </p>
+        <div className="anim-fade-up flex flex-col sm:flex-row items-center justify-center gap-3 mt-8" style={{ animationDelay: '270ms' }}>
+          <button
+            onClick={onStart}
+            className="press w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all duration-200 shadow-sm"
+          >
+            Start filing
+          </button>
+          <button
+            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+            className="press w-full sm:w-auto px-8 py-3.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-semibold text-base hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+          >
+            See how it works
+          </button>
+        </div>
+        <div className="anim-fade-up flex flex-wrap items-center justify-center gap-2 mt-8" style={{ animationDelay: '360ms' }}>
+          {['Upload', 'Extract', 'Calculate', 'File'].map((s) => (
+            <span key={s} className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
+              <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              {s}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* Trust strip */}
+      <Reveal>
+        <section id="documents" className="text-center scroll-mt-20">
+          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Works with your documents</p>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+            {DOC_TYPES.map((d) => (
+              <span key={d} className="px-5 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-heading font-semibold text-gray-700 dark:text-gray-200 shadow-sm">
+                {d}
+              </span>
+            ))}
+          </div>
+        </section>
+      </Reveal>
+
+      {/* Pillars */}
+      <section id="how-it-works" className="scroll-mt-20">
+        <Reveal className="text-center">
+          <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+            Tax filing, minus the misery.
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-lg mx-auto">
+            Three things Return does for you, so April stops being the cruelest month.
+          </p>
+        </Reveal>
+        <div className="grid sm:grid-cols-3 gap-4 mt-8">
+          {PILLARS.map((p, i) => (
+            <Reveal key={p.title} delay={i * 110}>
+              <div className="h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
+                <div className="w-11 h-11 bg-blue-100 dark:bg-blue-900/40 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={p.icon} />
+                  </svg>
+                </div>
+                <h3 className="font-heading font-semibold text-lg text-gray-900 dark:text-gray-100 mt-4">{p.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">{p.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* Alternating features */}
+      <section className="space-y-12 sm:space-y-16">
+        <Reveal>
+          <div className="grid sm:grid-cols-2 gap-8 items-center">
+            <div>
+              <h3 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">Smart extraction from any page.</h3>
+              <p className="text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                SARS codes, payslip labels, W-2 boxes, even scanned pages via OCR. Income, PAYE, retirement, medical aid, UIF and age-based rebates — pulled out and shown for your review before a single calculation runs.
+              </p>
+            </div>
+            <ExtractMock />
+          </div>
+        </Reveal>
+        <Reveal>
+          <div className="grid sm:grid-cols-2 gap-8 items-center">
+            <div className="sm:order-2">
+              <h3 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">Real SARS math, fully itemised.</h3>
+              <p className="text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                All seven 2025/2026 brackets from 18% to 45%, retirement deductions, age-tier rebates and medical credits — every rand of tax shown exactly where it comes from.
+              </p>
+            </div>
+            <div className="sm:order-1">
+              <BracketMock />
+            </div>
+          </div>
+        </Reveal>
+        <Reveal>
+          <div className="grid sm:grid-cols-2 gap-8 items-center">
+            <div>
+              <h3 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">Proof of filing in one click.</h3>
+              <p className="text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                Submit your return, download a professional PDF receipt, and revisit every filing any time from your history dashboard.
+              </p>
+            </div>
+            <ReceiptMock />
+          </div>
+        </Reveal>
+      </section>
+
+      {/* Stats band */}
+      <Reveal>
+        <section className="bg-gray-900 dark:bg-gray-900 border-y border-gray-900 dark:border-gray-800 rounded-3xl px-6 py-10 sm:py-12">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
+            {STATS.map(([v, l]) => (
+              <div key={l}>
+                <p className="text-3xl sm:text-4xl font-heading font-bold text-white tabular-nums">{v}</p>
+                <p className="text-sm text-gray-400 mt-1">{l}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </Reveal>
+
+      {/* SARS facts */}
+      <Reveal>
+        <section className="text-center">
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+            Built for the 2025/2026 tax year.
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-4 mt-6 text-left">
+            {SARS_FACTS.map(([v, l]) => (
+              <div key={l} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
+                <p className="text-xl font-heading font-bold text-blue-600 dark:text-blue-400 tabular-nums">{v}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{l}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </Reveal>
+
+      {/* CTA */}
+      <Reveal>
+        <section className="text-center bg-blue-600 rounded-3xl px-6 py-12 sm:py-16">
+          <h2 className="text-3xl sm:text-4xl font-heading font-bold text-white tracking-tight">
+            Stop dreading tax season.<br />Start your return.
+          </h2>
+          <p className="text-blue-100 mt-3 max-w-md mx-auto">
+            Upload your first document and see your calculation in minutes. Free, editable, no surprises.
+          </p>
+          <button
+            onClick={onStart}
+            className="press mt-8 px-8 py-3.5 bg-white text-blue-700 rounded-xl font-semibold text-base hover:bg-blue-50 transition-all duration-200 shadow-sm"
+          >
+            Start filing now
+          </button>
+        </section>
+      </Reveal>
+
+      {/* Footer */}
+      <footer className="pt-4 pb-8 text-center">
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <span className="font-heading font-semibold text-gray-900 dark:text-gray-100">Return</span>
+        </div>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 max-w-sm mx-auto">
+          Demonstration project. No real SARS integration, no real filings, no real payments.
+        </p>
+        <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">© 2026 Return. All rights reserved.</p>
+      </footer>
+    </div>
+  )
+}

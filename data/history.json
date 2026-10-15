@@ -1,5 +1,57 @@
 [
   {
+    "referenceNumber": "TAX-N7ZY7NHB",
+    "filedAt": "2026-10-13T14:12:21.626Z",
+    "employerName": "Details",
+    "income": 758398,
+    "taxableIncome": 758398,
+    "retirementDeduction": 0,
+    "totalTax": 195215.9,
+    "payeWithheld": 232501.37,
+    "refund": 37285.47,
+    "isRefund": true,
+    "breakdown": [
+      {
+        "label": "R 0 – R 237 100",
+        "rate": "18%",
+        "amount": 42678,
+        "taxable": 237100
+      },
+      {
+        "label": "R 237 101 – R 370 500",
+        "rate": "26%",
+        "amount": 34683.74,
+        "taxable": 133399
+      },
+      {
+        "label": "R 370 501 – R 512 800",
+        "rate": "31%",
+        "amount": 44112.69,
+        "taxable": 142299
+      },
+      {
+        "label": "R 512 801 – R 673 000",
+        "rate": "36%",
+        "amount": 57671.64,
+        "taxable": 160199
+      },
+      {
+        "label": "R 673 001 – R 857 900",
+        "rate": "39%",
+        "amount": 33304.83,
+        "taxable": 85397
+      }
+    ],
+    "deductions": [],
+    "credits": [],
+    "grossTax": 212450.9,
+    "primaryRebate": 17235,
+    "rebateLabel": "Primary Rebate (under 65)",
+    "medicalCredit": 0,
+    "uifContributions": 2125.44,
+    "age": null
+  },
+  {
     "referenceNumber": "TAX-UH5V8ROA",
     "filedAt": "2026-07-08T11:02:01.671Z",
     "employerName": "Acme Corp",

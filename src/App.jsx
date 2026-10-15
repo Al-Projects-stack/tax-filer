@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import StepIndicator from './components/StepIndicator'
+import Landing from './components/Landing'
 import UploadStep from './components/UploadStep'
 import ExtractStep from './components/ExtractStep'
 import CalculateStep from './components/CalculateStep'
@@ -21,7 +22,7 @@ function useDarkMode() {
 
 export default function App() {
   const [step, setStep] = useState(1)
-  const [view, setView] = useState('flow') // 'flow' | 'history'
+  const [view, setView] = useState('landing') // 'landing' | 'flow' | 'history'
   const [uploadId, setUploadId] = useState(null)
   const [extractedData, setExtractedData] = useState(null)
   const [calculation, setCalculation] = useState(null)
@@ -61,23 +62,78 @@ export default function App() {
 
   const steps = ['Upload', 'Extract', 'Calculate', 'File']
 
+  const goSection = (id) => {
+    if (view !== 'landing') setView('landing')
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }), 80)
+  }
+
+  const navLink = 'hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium transition-colors'
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
       <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10 transition-colors">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <button onClick={() => setView('landing')} className="press flex items-center gap-2.5" aria-label="Return home">
             <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
             <span className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Return</span>
-          </div>
+          </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {view === 'landing' && (
+              <>
+                <button onClick={() => goSection('how-it-works')} className={navLink}>
+                  How it works
+                </button>
+                <button onClick={() => goSection('documents')} className={navLink}>
+                  Documents
+                </button>
+                <button
+                  onClick={() => setView('history')}
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                >
+                  Filing History
+                </button>
+              </>
+            )}
+            {view !== 'landing' && (
+              <button
+                onClick={() => setView('landing')}
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium transition-colors"
+              >
+                Home
+              </button>
+            )}
+            {view === 'flow' && step === 4 && (
+              <button
+                onClick={() => setView('history')}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+              >
+                Filing History
+              </button>
+            )}
+            {view === 'history' && (
+              <button
+                onClick={() => setView('flow')}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+              >
+                Close History
+              </button>
+            )}
+            {view === 'landing' && (
+              <button
+                onClick={handleReset}
+                className="press px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                Start filing
+              </button>
+            )}
             <button
               onClick={toggleDark}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="press p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
               aria-label="Toggle dark mode"
             >
               {dark ? (
@@ -90,21 +146,14 @@ export default function App() {
                 </svg>
               )}
             </button>
-
-            {step === 4 && (
-              <button
-                onClick={() => setView(view === 'history' ? 'flow' : 'history')}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
-              >
-                {view === 'history' ? 'Close History' : 'Filing History'}
-              </button>
-            )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 pb-24">
-        {view === 'history' ? (
+      <main className={`${view === 'landing' ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 sm:px-6 py-8 pb-24`}>
+        {view === 'landing' ? (
+          <Landing onStart={handleReset} />
+        ) : view === 'history' ? (
           <Dashboard onNewFiling={handleReset} />
         ) : (
           <>
