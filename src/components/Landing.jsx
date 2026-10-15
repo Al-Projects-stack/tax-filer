@@ -173,7 +173,7 @@ function ReceiptMock() {
 const PILLARS = [
   {
     title: 'Upload anything',
-    body: 'IRP5s, payslips, W-2s, scanned PDFs, even photos. If it has numbers on it, Return can read it.',
+    body: 'IRP5s, payslips, W-2s, scanned PDFs, even photos. If it has numbers on it, Return reads them.',
     icon: 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5',
   },
   {
@@ -183,7 +183,7 @@ const PILLARS = [
   },
   {
     title: 'File with confidence',
-    body: 'Every figure is editable before you calculate, every bracket itemised, and every filing saved with a downloadable receipt.',
+    body: 'Edit any figure before calculating. Every bracket is itemised, and every filing is saved with a downloadable receipt.',
     icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   },
 ]
@@ -208,7 +208,7 @@ const MADE_FOR = [
 const EXTRAS = [
   {
     title: 'Dark mode',
-    body: 'Easy on the eyes at midnight before the deadline. Remembers your choice.',
+    body: 'Easy on the eyes at midnight. It remembers your choice.',
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />,
   },
   {
@@ -223,17 +223,17 @@ const EXTRAS = [
   },
   {
     title: 'Editable everything',
-    body: 'Every extracted field can be corrected by hand. Nothing files without your say-so.',
+    body: 'Every extracted field can be corrected by hand. Nothing is filed until you approve it.',
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />,
   },
   {
     title: 'Monthly payslips ×12',
-    body: 'Monthly figures are spotted and annualised automatically — with a nudge to verify.',
+    body: 'Monthly figures are spotted and annualised automatically, with a reminder to check them.',
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
   },
   {
     title: 'Scan & photo OCR',
-    body: 'Paper scans and phone photos become structured data. No retyping, ever.',
+    body: 'Paper scans and phone photos become structured data, so there is nothing to retype.',
     icon: (
       <>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -267,7 +267,7 @@ export default function Landing({ onStart }) {
           Turn tax documents<br />into filed returns.
         </h1>
         <p className="anim-fade-up text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto mt-5" style={{ animationDelay: '180ms' }}>
-          Upload any IRP5, payslip or scan. Return reads the figures, runs the real SARS calculation, and files your return in minutes.
+          Upload any IRP5, payslip or scan. Return reads the figures, runs the SARS calculation, and files your return in minutes.
         </p>
         <div className="anim-fade-up flex flex-col sm:flex-row items-center justify-center gap-3 mt-8" style={{ animationDelay: '270ms' }}>
           <button
@@ -313,10 +313,10 @@ export default function Landing({ onStart }) {
       <section id="how-it-works" className="scroll-mt-20">
         <Reveal className="text-center">
           <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-            Tax filing, minus the misery.
+            What Return does for you.
           </h2>
           <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-lg mx-auto">
-            Three things Return does for you, so April stops being the cruelest month.
+            Three things Return does for you.
           </p>
         </Reveal>
         <div className="grid sm:grid-cols-3 gap-4 mt-8">
@@ -353,7 +353,7 @@ export default function Landing({ onStart }) {
             <div>
               <h3 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">Smart extraction from any page.</h3>
               <p className="text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
-                SARS codes, payslip labels, W-2 boxes, even scanned pages via OCR. Income, PAYE, retirement, medical aid, UIF and age-based rebates — pulled out and shown for your review before a single calculation runs.
+                SARS codes, payslip labels, W-2 boxes, even scanned pages via OCR. Income, PAYE, retirement, medical aid, UIF and age-based rebates — pulled out and shown for your review before any calculation runs.
               </p>
             </div>
             <ExtractMock />
@@ -362,9 +362,9 @@ export default function Landing({ onStart }) {
         <Reveal>
           <div className="grid sm:grid-cols-2 gap-8 items-center">
             <div className="sm:order-2">
-              <h3 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">Real SARS math, fully itemised.</h3>
+              <h3 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 tracking-tight">SARS math, fully itemised.</h3>
               <p className="text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
-                All seven 2025/2026 brackets from 18% to 45%, retirement deductions, age-tier rebates and medical credits — every rand of tax shown exactly where it comes from.
+                All seven 2025/2026 brackets from 18% to 45%, retirement deductions, age-tier rebates and medical credits — every rand of tax shown where it comes from.
               </p>
             </div>
             <div className="sm:order-1">
@@ -462,7 +462,7 @@ export default function Landing({ onStart }) {
             Stop dreading tax season.<br />Start your return.
           </h2>
           <p className="text-blue-100 mt-3 max-w-md mx-auto">
-            Upload your first document and see your calculation in minutes. Free, editable, no surprises.
+            Upload your first document and see your calculation in minutes. Free and editable.
           </p>
           <button
             onClick={onStart}
