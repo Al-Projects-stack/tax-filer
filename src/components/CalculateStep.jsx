@@ -137,7 +137,7 @@ export default function CalculateStep({ data, onComplete }) {
         </div>
         <div className="px-6 py-4 space-y-3">
           {calc.breakdown.map((b, i) => (
-            <div key={i} className="flex justify-between text-sm anim-fade-up" style={{ animationDelay: `${Math.min(i, 7) * 60}ms` }}>
+            <div key={b.label} className="flex flex-wrap gap-x-3 gap-y-1 justify-between text-sm anim-fade-up" style={{ animationDelay: `${Math.min(i, 7) * 60}ms` }}>
               <span className="text-gray-500 dark:text-gray-400">{b.label}</span>
               <span className="text-gray-500 dark:text-gray-400 tabular-nums">{b.rate}</span>
               <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">{fmt(b.amount)}</span>

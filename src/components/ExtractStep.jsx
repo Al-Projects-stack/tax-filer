@@ -101,16 +101,23 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
   const [formData, setFormData] = useState({ ...INITIAL_FORM })
   const [errors, setErrors] = useState({})
   const [quoteIdx, setQuoteIdx] = useState(0)
+  const [quotePaused, setQuotePaused] = useState(false)
+  const [reducedMotion] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  )
   const pollRef = useRef(null)
   const jobIdRef = useRef(null)
 
   useEffect(() => {
     if (phase !== 'starting' && phase !== 'processing') return
+    if (quotePaused || reducedMotion) return
     const id = setInterval(() => {
       setQuoteIdx((i) => (i + 1) % TAX_QUOTES.length)
     }, 3500)
     return () => clearInterval(id)
-  }, [phase])
+  }, [phase, quotePaused, reducedMotion])
 
   const resetAndRetry = () => {
     setPhase('starting')
@@ -303,6 +310,11 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
     setErrors(newErrors)
     if (!hasError) {
       onComplete(cleaned)
+    } else {
+      const firstBad = Object.keys(newErrors)[0]
+      if (firstBad) {
+        setTimeout(() => document.getElementById(`field-${firstBad}`)?.focus(), 50)
+      }
     }
   }
 
@@ -316,7 +328,13 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Reading your document to extract tax information</p>
         </div>
 
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl px-5 py-4 text-center anim-fade-up" style={{ animationDelay: '80ms' }}>
+        <div
+          className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl px-5 py-4 text-center anim-fade-up"
+          style={{ animationDelay: '80ms' }}
+          onMouseEnter={() => setQuotePaused(true)}
+          onMouseLeave={() => setQuotePaused(false)}
+          aria-hidden="true"
+        >
           <p key={quoteIdx} className="anim-quote text-sm font-medium text-blue-700 dark:text-blue-300 italic">
             &ldquo;{TAX_QUOTES[quoteIdx]}&rdquo;
           </p>
@@ -427,13 +445,16 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {fields.map((key) => (
             <div key={key} className="px-6 py-3.5">
-              <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">{FIELD_LABELS[key]}</label>
+              <label htmlFor={`field-${key}`} className="block text-sm text-gray-500 dark:text-gray-400 mb-1">{FIELD_LABELS[key]}</label>
               <input
+                id={`field-${key}`}
                 type="text"
                 value={formData[key] ?? ''}
                 onChange={handleChange(key)}
                 onBlur={handleBlur(key)}
                 inputMode={NUMERIC_FIELDS.has(key) ? 'decimal' : 'text'}
+                aria-invalid={!!errors[key]}
+                aria-describedby={errors[key] ? `field-${key}-error` : undefined}
                 className={`w-full px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 border rounded-lg outline-none transition-colors tabular-nums ${
                   errors[key]
                     ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 focus:ring-2 focus:ring-red-300 dark:focus:ring-red-700'
@@ -441,7 +462,7 @@ export default function ExtractStep({ uploadId, onComplete, onBack }) {
                 }`}
               />
               {errors[key] && (
-                <p className="text-xs text-red-500 dark:text-red-400 mt-1">{errors[key]}</p>
+                <p id={`field-${key}-error`} role="alert" className="text-xs text-red-500 dark:text-red-400 mt-1">{errors[key]}</p>
               )}
             </div>
           ))}

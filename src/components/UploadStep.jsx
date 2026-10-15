@@ -157,7 +157,7 @@ export default function UploadStep({ onComplete }) {
       </div>
 
       {error && (
-        <div key={error} className="anim-shake bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
+        <div key={error} role="alert" className="anim-shake bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}

@@ -84,12 +84,21 @@
   animation: spinSlow 6s linear infinite;
 }
 
-/* Press feedback for every clickable surface */
+/* Press feedback for every clickable surface (transform-only: no layout shift) */
 .press {
   transition: transform 0.15s ease, filter 0.15s ease;
 }
 .press:active {
   transform: scale(0.96);
+}
+
+/* Visible keyboard focus for all buttons (inputs carry their own rings) */
+button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.dark button:focus-visible {
+  outline-color: #60a5fa;
 }
 
 /* Animated success checkmark */

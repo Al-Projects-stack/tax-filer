@@ -15,15 +15,19 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
   const [referenceNumber, setReferenceNumber] = useState('')
   const [filedAt, setFiledAt] = useState('')
   const [msgIdx, setMsgIdx] = useState(0)
+  const [msgPaused, setMsgPaused] = useState(false)
 
   useEffect(() => {
     if (status !== 'submitting') return
+    if (msgPaused) return
+    if (typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     setMsgIdx(0)
     const id = setInterval(() => {
       setMsgIdx((i) => (i + 1) % SUBMIT_MESSAGES.length)
     }, 2000)
     return () => clearInterval(id)
-  }, [status])
+  }, [status, msgPaused])
 
   const confetti = useMemo(() => (
     Array.from({ length: 28 }, (_, i) => ({
@@ -177,7 +181,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         </button>
 
         {errorMessage && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mt-3">
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mt-3">
             {errorMessage}
           </div>
         )}
@@ -203,7 +207,13 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
           <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
             <div className="bg-blue-600 h-1.5 rounded-full animate-pulse" style={{ width: '65%' }} />
           </div>
-          <p key={msgIdx} className="anim-quote text-xs text-gray-400 dark:text-gray-500 mt-2">{SUBMIT_MESSAGES[msgIdx]}...</p>
+          <p
+            key={msgIdx}
+            className="anim-quote text-xs text-gray-400 dark:text-gray-500 mt-2"
+            onMouseEnter={() => setMsgPaused(true)}
+            onMouseLeave={() => setMsgPaused(false)}
+            aria-hidden="true"
+          >{SUBMIT_MESSAGES[msgIdx]}...</p>
         </div>
       </div>
     )
@@ -221,7 +231,7 @@ export default function FileStep({ calculation, extractedData, onComplete, onRes
         <p className="text-gray-500 dark:text-gray-400 mt-1">{errorMessage || 'Please try again.'}</p>
         <button
           onClick={() => setStatus('confirm')}
-          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="press mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           Try Again
         </button>
