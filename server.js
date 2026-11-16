@@ -378,7 +378,7 @@ async function structureWithLLM(rawText) {
 }
 
 Rules:
-- Numbers must be plain numbers — no formatting, no dollar signs, no commas
+- Numbers must be plain numbers, with no formatting, currency symbols or commas
 - "retirementContributions" = pension/provident/retirement-annuity contributions (SARS codes 4001/4003/4006)
 - "medicalAidContributions" = medical aid/scheme fees paid; "medicalDependants" = members covered including yourself
 - "uifContributions" = UIF contributions (code 4141); "age" = taxpayer age, or null if not found
@@ -540,7 +540,7 @@ async function processExtraction(jobId) {
       } else if (monthly) {
         result._warning = 'Monthly figures were annualised (x12). Please verify.'
       }
-      // PAYE withheld can never exceed gross income — flag it loudly instead
+      // PAYE withheld can never exceed gross income, so flag it loudly instead
       // of showing a billion-rand refund.
       if (result.income > 0 && result.federalTaxWithheld > result.income) {
         result._warning = 'The PAYE figure looks wrong (higher than income). Please correct it before continuing.'
@@ -593,7 +593,9 @@ function calculateSA(income, payeWithheld, opts = {}) {
     const taxAmount = +(taxableInBracket * b.rate).toFixed(2)
     grossTax += taxAmount
     breakdown.push({
-      label: `R ${b.from.toLocaleString('en-ZA')} – R ${b.to === Infinity ? '+' : b.to.toLocaleString('en-ZA')}`,
+      label: b.to === Infinity
+        ? `R ${b.from.toLocaleString('en-ZA')} and above`
+        : `R ${b.from.toLocaleString('en-ZA')} to R ${b.to.toLocaleString('en-ZA')}`,
       rate: `${(b.rate * 100).toFixed(0)}%`,
       amount: taxAmount,
       taxable: taxableInBracket,
@@ -861,13 +863,13 @@ app.post('/api/receipt', async (req, res) => {
     y -= 8
     page.drawText('Tax Filing Summary', { x: 50, y, size: 11, font: font, color: rgb(0.5, 0.5, 0.5) })
     y -= 18
-    page.drawText(`Reference: ${d.referenceNumber || '—'}`, { x: 50, y, size: 9, font: mono, color: rgb(0.4, 0.4, 0.4) })
+    page.drawText(`Reference: ${d.referenceNumber || 'Not available'}`, { x: 50, y, size: 9, font: mono, color: rgb(0.4, 0.4, 0.4) })
     y -= 14
-    page.drawText(`Filed: ${d.filedAt ? new Date(d.filedAt).toLocaleDateString('en-ZA') : '—'}`, { x: 50, y, size: 9, font: font, color: rgb(0.4, 0.4, 0.4) })
+    page.drawText(`Filed: ${d.filedAt ? new Date(d.filedAt).toLocaleDateString('en-ZA') : 'Not available'}`, { x: 50, y, size: 9, font: font, color: rgb(0.4, 0.4, 0.4) })
 
     y -= 24
     section('Taxpayer')
-    row('Employer', d.employerName || '—')
+    row('Employer', d.employerName || 'Not provided')
     row('Tax Year', d.taxYear || '2025/2026')
 
     y -= 8
@@ -886,7 +888,9 @@ app.post('/api/receipt', async (req, res) => {
     section('Bracket Breakdown')
     const brk = d.breakdown || []
     for (const b of brk) {
-      page.drawText(b.label || '', { x: 50, y, size: 9, font: font, color: rgb(0.3, 0.3, 0.3) })
+      // Older saved filings use dashed ranges; print them as "R x to R y".
+      const label = String(b.label || '').replace(/\s*[\u2013\u2014]\s*R\s*\+\s*$/, ' and above').replace(/\s*[\u2013\u2014]\s*/g, ' to ')
+      page.drawText(label, { x: 50, y, size: 9, font: font, color: rgb(0.3, 0.3, 0.3) })
       page.drawText(b.rate || '', { x: 320, y, size: 9, font: font, color: rgb(0.5, 0.5, 0.5) })
       page.drawText(fmt(b.amount || 0), { x: 420, y, size: 9, font: font, color: rgb(0.1, 0.1, 0.1) })
       y -= 14

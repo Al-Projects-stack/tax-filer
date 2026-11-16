@@ -56,7 +56,7 @@ function formatExtractedValue(value) {
 }
 
 const TAX_QUOTES = [
-  'Death and taxes — we handle one of them.',
+  'Death and taxes. We handle one of them.',
   'Counting your rands so you don\u2019t have to.',
   'Somewhere, an accountant just felt a disturbance.',
   'Reading the fine print so you don\u2019t have to.',

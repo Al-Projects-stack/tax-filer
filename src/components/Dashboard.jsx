@@ -4,6 +4,14 @@ function fmt(n) {
   return 'R ' + Math.abs(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Filings saved before bracket labels switched to "R x to R y" still hold
+// dashed ranges, so rewrite them for display.
+function bracketLabel(label = '') {
+  return label
+    .replace(/\s*[\u2013\u2014]\s*R\s*\+\s*$/, ' and above')
+    .replace(/\s*[\u2013\u2014]\s*/g, ' to ')
+}
+
 function shortDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -85,7 +93,7 @@ export default function Dashboard({ onNewFiling }) {
   const exportHistory = (format) => {
     const stamp = new Date().toISOString().slice(0, 10)
     if (format === 'csv') {
-      // BOM so Excel opens the file as UTF-8 (keeps the en dash in labels etc.)
+      // BOM so Excel opens the file as UTF-8 (keeps curly quotes and accents intact)
       download(`return-filings-${stamp}.csv`, '﻿' + toCsv(records), 'text/csv;charset=utf-8')
     } else {
       download(`return-filings-${stamp}.json`, JSON.stringify(records, null, 2), 'application/json')
@@ -193,7 +201,7 @@ export default function Dashboard({ onNewFiling }) {
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-gray-400 dark:text-gray-500 text-xs">Employer</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{r.employerName || '—'}</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{r.employerName || 'Not provided'}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 dark:text-gray-500 text-xs">Income</p>
@@ -228,7 +236,7 @@ export default function Dashboard({ onNewFiling }) {
                   </div>
                   <div>
                     <span className="text-gray-400 dark:text-gray-500">Employer</span>
-                    <p className="font-medium text-gray-900 dark:text-gray-100">{r.employerName || '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{r.employerName || 'Not provided'}</p>
                   </div>
                   <div>
                     <span className="text-gray-400 dark:text-gray-500">Gross Income</span>
@@ -277,7 +285,7 @@ export default function Dashboard({ onNewFiling }) {
                     <div className="space-y-1.5">
                       {r.breakdown.map((b, i) => (
                         <div key={i} className="flex justify-between text-xs">
-                          <span className="text-gray-500 dark:text-gray-400">{b.label}</span>
+                          <span className="text-gray-500 dark:text-gray-400">{bracketLabel(b.label)}</span>
                           <span className="text-gray-700 dark:text-gray-300 font-medium tabular-nums">{b.rate} &middot; {fmt(b.amount)}</span>
                         </div>
                       ))}

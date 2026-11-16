@@ -8,14 +8,14 @@ Upload a tax document, extract data, calculate your return and file, all in one 
 | Step | What happens |
 |---|---|
 | **Upload** | Drag-and-drop or browse to upload a PDF or image of your tax document |
-| **Extract** | Reads the file — text PDFs via `pdf-parse`, scanned docs/images via `tesseract.js` OCR. Optionally, the raw text is sent to an LLM (OpenAI-compatible) to extract structured fields. Results appear in an editable form for correction |
-| **Calculate** | Runs the extracted income through SARS 2025/2026 progressive tax brackets (18%–45%) with the primary rebate (R17,235) to determine a refund or amount owing |
+| **Extract** | Reads the file: text PDFs via `pdf-parse`, scanned docs/images via `tesseract.js` OCR. Optionally, the raw text is sent to an LLM (OpenAI-compatible) to extract structured fields. Results appear in an editable form for correction |
+| **Calculate** | Runs the extracted income through SARS 2025/2026 progressive tax brackets (18% to 45%) with the primary rebate (R17,235) to determine a refund or amount owing |
 | **File** | Review the summary, submit, and get a confirmation with a reference number. Past filings are saved to a history dashboard accessible from the success screen |
 
 ## Features
 
 - PDF text extraction via `pdf-parse` with OCR fallback via `tesseract.js`
-- Optional LLM-based field extraction (OpenAI-compatible — configure via `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`)
+- Optional LLM-based field extraction (OpenAI-compatible, configured via `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`)
 - **Try a sample IRP5**: one click from the landing page runs a fictional certificate through the whole flow, so no real tax document is needed. Regenerate it with `npm run sample`, which writes `public/sample-irp5.pdf`
 - **Phone camera capture**: on touch devices, "Take a photo" opens the rear camera. Large photos are downscaled to 2400px before upload
 - **History export**: download all filings as CSV (opens in Excel) or JSON from the Filing History page
@@ -24,7 +24,7 @@ Upload a tax document, extract data, calculate your return and file, all in one 
 - SARS 2025/2026 progressive tax brackets with primary rebate
 - Filing history dashboard with expandable breakdowns
 - Clean, flat fintech UI built with React + Tailwind CSS
-- In-memory only for extracted data and processing — filing history is persisted to `data/history.json`, and there is no auth or production database
+- In-memory only for extracted data and processing. Filing history is persisted to `data/history.json`, and there is no auth or production database
 
 ## Run locally
 
@@ -59,7 +59,7 @@ This starts two servers together:
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_API_KEY` | — | API key for OpenAI-compatible endpoint (without this, extraction uses the built-in regex parser) |
+| `LLM_API_KEY` | None | API key for OpenAI-compatible endpoint (without this, extraction uses the built-in regex parser) |
 | `LLM_BASE_URL` | `https://api.openai.com/v1` | Base URL for the LLM provider |
 | `LLM_MODEL` | `gpt-4o-mini` | Model used for structuring extracted text |
 
