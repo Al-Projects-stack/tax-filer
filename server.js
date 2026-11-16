@@ -236,9 +236,13 @@ function parseWithRegex(rawText) {
 
   // ---- Medical aid (drives the medical scheme fees tax credit) ----
   const MEDICAL_LABEL = /(medical\s+(aid|scheme|fees)|scheme\s+fees|code\s*4116|\(4116\))/i
+  // A line like "Medical scheme members: 3" is a head count, not money:
+  // skip member/dependant lines unless they carry an R/ZAR-prefixed amount.
+  const isMemberCountLine = (line) => /(dependants?|dependents?|members|beneficiaries|covered)\b/i.test(line)
+    && !/\b(?:R|ZAR)\s*\d/.test(line)
   let medicalAidContributions = 0
   for (const line of lines) {
-    if (MEDICAL_LABEL.test(line) && !/employer|fringe|benefit/i.test(line)) {
+    if (MEDICAL_LABEL.test(line) && !/employer|fringe|benefit/i.test(line) && !isMemberCountLine(line)) {
       const amt = amountAfter(line, MEDICAL_LABEL) ?? firstAmount(line)
       if (amt !== null && amt > 0) medicalAidContributions += amt
     }
@@ -916,7 +920,20 @@ app.post('/api/receipt', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Tax API server running on http://localhost:${PORT}`)
+})
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `\nPort ${PORT} is already in use. Another copy of Return is probably still running.\n` +
+      'Close the other terminal (Ctrl+C) and run `npm run dev` again.\n' +
+      `To see what is using it on Windows: netstat -ano | findstr :${PORT}\n`
+    )
+  } else {
+    console.error('API server failed to start:', err)
+  }
+  process.exit(1)
 })
 

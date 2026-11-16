@@ -4,16 +4,60 @@ import UploadSuccessPopup from './UploadSuccessPopup'
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png']
 const MAX_SIZE = 10 * 1024 * 1024
+const ACCEPT = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
+const SAMPLE_URL = '/sample-irp5.pdf'
 
-export default function UploadStep({ onComplete }) {
+// Phone photos are often 4000px+ and several MB. Shrink them so they stay
+// under the upload limit and OCR faster. Text stays sharp at 2400px.
+const MAX_IMAGE_EDGE = 2400
+const RESIZE_ABOVE_BYTES = 4 * 1024 * 1024
+
+async function downscaleImage(f) {
+  if (!f.type.startsWith('image/') || typeof createImageBitmap !== 'function') return f
+  try {
+    const bmp = await createImageBitmap(f)
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bmp.width, bmp.height))
+    if (scale === 1 && f.size <= RESIZE_ABOVE_BYTES) { bmp.close(); return f }
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bmp.width * scale)
+    canvas.height = Math.round(bmp.height * scale)
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height)
+    bmp.close()
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+    if (!blob) return f
+    const name = f.name.replace(/\.[^.]+$/, '') + '.jpg'
+    return new File([blob], name, { type: 'image/jpeg' })
+  } catch {
+    return f
+  }
+}
+
+function useIsTouchDevice() {
+  const [touch, setTouch] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia?.('(pointer: coarse)')
+    if (!mq) return
+    setTouch(mq.matches)
+    const onChange = (e) => setTouch(e.matches)
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [])
+  return touch
+}
+
+export default function UploadStep({ onComplete, startWithSample = false }) {
   const [dragOver, setDragOver] = useState(false)
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [loadingSample, setLoadingSample] = useState(false)
   const [error, setError] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [showPopup, setShowPopup] = useState(false)
   const [uploadedId, setUploadedId] = useState(null)
   const inputRef = useRef(null)
+  const cameraRef = useRef(null)
+  const sampleStarted = useRef(false)
+  const isTouch = useIsTouchDevice()
 
   useEffect(() => {
     return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
@@ -38,8 +82,9 @@ export default function UploadStep({ onComplete }) {
     return true
   }, [previewUrl])
 
-  const handleFile = useCallback((f) => {
-    validateFile(f)
+  const handleFile = useCallback(async (f) => {
+    const prepared = await downscaleImage(f)
+    return validateFile(prepared) ? prepared : null
   }, [validateFile])
 
   const handleDrop = useCallback((e) => {
@@ -55,13 +100,13 @@ export default function UploadStep({ onComplete }) {
   }
   const handleDragLeave = () => setDragOver(false)
 
-  const handleUpload = async () => {
-    if (!file) return
+  const handleUpload = async (f = file) => {
+    if (!f) return
     setUploading(true)
     setError(null)
     try {
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', f)
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
       const json = await res.json()
       if (!res.ok || !json.uploadId) {
@@ -75,6 +120,32 @@ export default function UploadStep({ onComplete }) {
       setUploading(false)
     }
   }
+
+  // Fetch the bundled fictional IRP5 and treat it like a user-picked file.
+  // With autoUpload (coming from the landing page) it goes straight through.
+  const loadSample = async (autoUpload = false) => {
+    setLoadingSample(true)
+    setError(null)
+    try {
+      const res = await fetch(SAMPLE_URL)
+      if (!res.ok) throw new Error('missing')
+      const blob = await res.blob()
+      const sample = new File([blob], 'sample-irp5.pdf', { type: 'application/pdf' })
+      const accepted = await handleFile(sample)
+      if (accepted && autoUpload) await handleUpload(accepted)
+    } catch {
+      setError('Could not load the sample document. Please upload your own file instead.')
+    }
+    setLoadingSample(false)
+  }
+
+  useEffect(() => {
+    if (startWithSample && !sampleStarted.current) {
+      sampleStarted.current = true
+      loadSample(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startWithSample])
 
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B'
@@ -110,8 +181,9 @@ export default function UploadStep({ onComplete }) {
         <input
           ref={inputRef}
           type="file"
+          accept={ACCEPT}
           className="hidden"
-          onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+          onChange={(e) => { const f = e.target.files[0]; e.target.value = ''; if (f) handleFile(f) }}
         />
 
         {!file ? (
@@ -156,6 +228,41 @@ export default function UploadStep({ onComplete }) {
         )}
       </div>
 
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files[0]; e.target.value = ''; if (f) handleFile(f) }}
+      />
+
+      {!file && (
+        <div className="anim-fade-up flex flex-col sm:flex-row items-center justify-center gap-3 -mt-2" style={{ animationDelay: '135ms' }}>
+          {isTouch && (
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              className="press w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+              </svg>
+              Take a photo
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => loadSample(false)}
+            disabled={loadingSample}
+            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 transition-colors"
+          >
+            {loadingSample ? 'Loading sample...' : 'No document? Use a sample IRP5'}
+          </button>
+        </div>
+      )}
+
       {error && (
         <div key={error} role="alert" className="anim-shake bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
           {error}
@@ -163,7 +270,7 @@ export default function UploadStep({ onComplete }) {
       )}
 
       <button
-        onClick={handleUpload}
+        onClick={() => handleUpload()}
         disabled={!file || uploading}
         style={{ animationDelay: '180ms' }}
         className={`press anim-fade-up w-full py-3.5 rounded-xl font-semibold text-base transition-all duration-200 ${

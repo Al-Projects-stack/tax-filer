@@ -113,33 +113,121 @@ button:focus-visible {
   animation: drawCheck 0.45s 0.45s ease forwards;
 }
 
-/* Seamless logo/doc-type marquee (duplicate list twice in markup) */
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+/* ---------- Landing page 3D ---------- */
+
+.stage-3d { perspective: 1400px; }
+.preserve-3d { transform-style: preserve-3d; }
+
+/* Hero: perspective grid floor that rolls toward the viewer */
+@keyframes gridRoll {
+  to { background-position: 0 56px; }
+}
+.hero-grid {
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  bottom: 0;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.4) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(500px) rotateX(48deg);
+  transform-origin: center bottom;
+  animation: gridRoll 2.6s linear infinite;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 45%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 45%, #000 80%, transparent 100%);
+  pointer-events: none;
+}
+.hero-glow {
+  position: absolute;
+  inset: 10% 5%;
+  background: radial-gradient(closest-side, rgba(37, 99, 235, 0.45), transparent);
+  filter: blur(30px);
+  pointer-events: none;
 }
 
-.marquee {
-  overflow: hidden;
+/* Idle drift of the whole hero scene (pointer tilt sits on an inner layer) */
+@keyframes heroDrift {
+  0%, 100% { transform: rotateX(9deg) rotateY(-15deg) translateY(0); }
+  50% { transform: rotateX(5deg) rotateY(-7deg) translateY(-12px); }
+}
+.hero-drift {
+  transform-style: preserve-3d;
+  animation: heroDrift 10s ease-in-out infinite;
 }
 
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: marquee 26s linear infinite;
+/* Headline words flip up into place */
+@keyframes wordUp {
+  from { opacity: 0; transform: translateY(55%) rotateX(-85deg); }
+  to { opacity: 1; transform: none; }
+}
+.word-up {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  animation: wordUp 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.marquee:hover .marquee-track {
-  animation-play-state: paused;
+/* Scan beam sweeping the IRP5 */
+.scan-beam {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: #60a5fa;
+  box-shadow: 0 0 14px 4px rgba(59, 130, 246, 0.75);
+  transform: translateZ(12px);
+  transition: top 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  pointer-events: none;
 }
 
-/* Flat dot texture (dots, not a color wash) */
-.bg-dots {
-  background-image: radial-gradient(circle, rgba(37, 99, 235, 0.13) 1.2px, transparent 1.3px);
-  background-size: 22px 22px;
+/* A figure lifting off the paper toward the viewer */
+@keyframes liftOff {
+  0% { opacity: 1; transform: translateZ(0); }
+  100% { opacity: 0; transform: translateZ(170px) translate(40px, -24px); }
 }
-.dark .bg-dots {
-  background-image: radial-gradient(circle, rgba(96, 165, 250, 0.15) 1.2px, transparent 1.3px);
+.ghost-lift {
+  animation: liftOff 0.9s ease-out forwards;
+  pointer-events: none;
+}
+
+/* Ledger rows and table rows flip down into place */
+@keyframes flipIn {
+  from { opacity: 0; transform: rotateX(-90deg); }
+  to { opacity: 1; transform: rotateX(0); }
+}
+.flip-in {
+  transform-origin: 50% 0;
+  animation: flipIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Rubber stamp slam */
+@keyframes stampIn {
+  0% { opacity: 0; transform: scale(2.8) rotate(-18deg); }
+  55% { opacity: 1; transform: scale(0.9) rotate(-9deg); }
+  75% { transform: scale(1.06) rotate(-11deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-10deg); }
+}
+.stamp-in {
+  animation: stampIn 0.55s cubic-bezier(0.3, 0.7, 0.3, 1) both;
+}
+
+@keyframes fillBar {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.fill-bar { animation: fillBar 1.4s ease-out both; }
+
+/* Glow pulse for the main call-to-action */
+@keyframes ctaGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.0), 0 10px 30px -10px rgba(37, 99, 235, 0.8); }
+  50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.18), 0 10px 40px -8px rgba(37, 99, 235, 0.95); }
+}
+.cta-glow { animation: ctaGlow 2.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-grid { animation: none; }
 }
 
 /* Confetti pieces (positions set inline) */
@@ -161,7 +249,13 @@ button:focus-visible {
   .anim-float,
   .anim-spin-slow,
   .confetti-piece,
-  .marquee-track {
+  .hero-drift,
+  .word-up,
+  .ghost-lift,
+  .flip-in,
+  .stamp-in,
+  .fill-bar,
+  .cta-glow {
     animation: none;
     opacity: 1;
     transform: none;

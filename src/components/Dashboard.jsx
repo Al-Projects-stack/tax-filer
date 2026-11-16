@@ -10,6 +10,48 @@ function shortDate(iso) {
   return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+const CSV_COLUMNS = [
+  ['Reference', (r) => r.referenceNumber],
+  ['Filed at', (r) => r.filedAt],
+  ['Employer', (r) => r.employerName],
+  ['Gross income', (r) => r.income],
+  ['Retirement deduction', (r) => r.retirementDeduction],
+  ['Taxable income', (r) => r.taxableIncome],
+  ['Gross tax', (r) => r.grossTax],
+  ['Rebate', (r) => r.primaryRebate],
+  ['Medical tax credit', (r) => r.medicalCredit],
+  ['Tax after rebates and credits', (r) => r.totalTax],
+  ['PAYE withheld', (r) => r.payeWithheld],
+  ['UIF contributions', (r) => r.uifContributions],
+  ['Outcome', (r) => (r.isRefund ? 'Refund' : 'Owing')],
+  ['Amount', (r) => Math.abs(Number(r.refund) || 0)],
+]
+
+function csvCell(value) {
+  if (value === null || value === undefined) return ''
+  let s = String(value)
+  // Stop spreadsheet apps treating text (e.g. an employer name) as a formula.
+  if (/^[=+\-@\t\r]/.test(s) && typeof value !== 'number') s = "'" + s
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function toCsv(records) {
+  const head = CSV_COLUMNS.map(([h]) => csvCell(h)).join(',')
+  const rows = records.map((r) => CSV_COLUMNS.map(([, get]) => csvCell(get(r))).join(','))
+  return [head, ...rows].join('\r\n')
+}
+
+function download(filename, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export default function Dashboard({ onNewFiling }) {
   const [records, setRecords] = useState([])
   const [expanded, setExpanded] = useState(null)
@@ -40,6 +82,16 @@ export default function Dashboard({ onNewFiling }) {
 
   const toggle = (ref) => setExpanded(expanded === ref ? null : ref)
 
+  const exportHistory = (format) => {
+    const stamp = new Date().toISOString().slice(0, 10)
+    if (format === 'csv') {
+      // BOM so Excel opens the file as UTF-8 (keeps the en dash in labels etc.)
+      download(`return-filings-${stamp}.csv`, '﻿' + toCsv(records), 'text/csv;charset=utf-8')
+    } else {
+      download(`return-filings-${stamp}.json`, JSON.stringify(records, null, 2), 'application/json')
+    }
+  }
+
   const handleDelete = async (ref) => {
     setDeleting(ref)
     try {
@@ -58,7 +110,7 @@ export default function Dashboard({ onNewFiling }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-heading font-bold text-gray-900 dark:text-gray-100">Filing History</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -69,12 +121,35 @@ export default function Dashboard({ onNewFiling }) {
               : `${records.length} filing${records.length === 1 ? '' : 's'} on record`}
           </p>
         </div>
-        <button
-          onClick={onNewFiling}
-          className="press px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          New Filing
-        </button>
+        <div className="flex items-center gap-2">
+          {records.length > 0 && (
+            <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden" role="group" aria-label="Export filing history">
+              <button
+                onClick={() => exportHistory('csv')}
+                className="press inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Export history as CSV"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                CSV
+              </button>
+              <button
+                onClick={() => exportHistory('json')}
+                className="press px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 border-l border-gray-300 dark:border-gray-600 transition-colors"
+                aria-label="Export history as JSON"
+              >
+                JSON
+              </button>
+            </div>
+          )}
+          <button
+            onClick={onNewFiling}
+            className="press px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            New Filing
+          </button>
+        </div>
       </div>
 
       {loadError && records.length > 0 && (

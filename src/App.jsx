@@ -28,6 +28,7 @@ export default function App() {
   const [calculation, setCalculation] = useState(null)
   const [referenceNumber, setReferenceNumber] = useState(null)
   const [filingStatus, setFilingStatus] = useState(null)
+  const [startWithSample, setStartWithSample] = useState(false)
   const [dark, toggleDark] = useDarkMode()
 
   const handleUploaded = (id) => {
@@ -57,7 +58,13 @@ export default function App() {
     setCalculation(null)
     setReferenceNumber(null)
     setFilingStatus(null)
+    setStartWithSample(false)
     setView('flow')
+  }
+
+  const handleTrySample = () => {
+    handleReset()
+    setStartWithSample(true)
   }
 
   const steps = ['Upload', 'Extract', 'Calculate', 'File']
@@ -150,9 +157,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className={`${view === 'landing' ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-4 sm:px-6 py-8 pb-24`}>
+      <main className={view === 'landing' ? '' : 'max-w-2xl mx-auto px-4 sm:px-6 py-8 pb-24'}>
         {view === 'landing' ? (
-          <Landing onStart={handleReset} />
+          <Landing onStart={handleReset} onTrySample={handleTrySample} />
         ) : view === 'history' ? (
           <Dashboard onNewFiling={handleReset} />
         ) : (
@@ -160,7 +167,7 @@ export default function App() {
             <StepIndicator currentStep={step} steps={steps} />
 
             <div key={`${step}-${view}`} className="mt-8 anim-fade-up">
-              {step === 1 && <UploadStep onComplete={handleUploaded} />}
+              {step === 1 && <UploadStep onComplete={handleUploaded} startWithSample={startWithSample} />}
               {step === 2 && <ExtractStep uploadId={uploadId} onComplete={handleExtracted} onBack={() => setStep(1)} />}
               {step === 3 && extractedData && (
                 <CalculateStep data={extractedData} onComplete={handleCalculated} />

@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"node server.js\" \"vite\"",
+    "dev": "concurrently --kill-others-on-fail -n server,client -c blue,green \"node server.js\" \"vite\"",
+    "sample": "node scripts/make-sample-irp5.mjs",
     "build": "vite build",
     "server": "node server.js"
   },
